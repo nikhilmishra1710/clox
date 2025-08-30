@@ -1,0 +1,29 @@
+id: CLOX-001
+
+input:
+  type: 
+    file
+  file:
+    tests/inputs/test1.in
+  
+
+expected_stdout:
+  type:
+    file
+  file:
+    tests/expected/test1.out.expected
+  
+expected_stderr:
+  type:
+    file
+  file:
+    tests/expected/test1.err.expected
+expected_ec: 65
+
+hooks:
+  pre:
+    - echo "This is a pre-hook"
+  post:
+    - echo "This is a post-hook"
+
+timeout: 10

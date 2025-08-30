@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-set -e pipefail
+set -euo pipefail
 
 BIN=bin/clox
-INPUT_DIR=tests/inputs
+INPUT_DIR=tests/specs
 EXPECTED_DIR=tests/expected
 OUTPUT_DIR=tests/outputs
 
@@ -19,64 +19,127 @@ RESET=$(tput sgr0)
 pass=0
 fail=0
 
-for input_file in "$INPUT_DIR"/*;
+for test_spec_file in "$INPUT_DIR"/*.yaml;
 do
-    filename=$(basename -- "$input_file")
-    expected_out="$EXPECTED_DIR/${filename%.in}.out.expected"
-    expected_err="$EXPECTED_DIR/${filename%.in}.err.expected"
-    expected_code="$EXPECTED_DIR/${filename%.in}.exitcode.expected"
-    
-    output_out="$OUTPUT_DIR/${filename%.in}.out"
-    output_err="$OUTPUT_DIR/${filename%.in}.err"
-    output_code="$OUTPUT_DIR/${filename%.in}.exitcode"
+    filename=$(basename -- "$test_spec_file" .yaml)
 
-    echo ""
-    echo "${BOLD}${YELLOW}Test: $filename${RESET}"
-    if "$BIN" < "$input_file" > "$output_out" 2> "$output_err"; then
-        echo "$?" > "$output_code"
+    output_out="$OUTPUT_DIR/${filename}.out"
+    output_err="$OUTPUT_DIR/${filename}.err"
+
+    test_id=$( yq -r '.id' "$test_spec_file" )
+    
+    infile_type=$( yq -r '.input.type' "$test_spec_file" )
+
+    if [ "$infile_type" == "file" ]; then
+        infile=$( yq -r '.input.file' "$test_spec_file" )
+        if [ ! -f "$infile" ]; then
+            echo "[${RED}ERROR${RESET}] Input file $infile does not exist for test $test_id"
+            fail=$((fail + 1))
+            continue
+        fi
+        cp "$infile" "$OUTPUT_DIR/${filename}.in"
+    elif [ "$infile_type" == "inline" ]; then
+        infile_content=$( yq -r '.input.inline' "$test_spec_file" )
+        echo "$infile_content" > "$OUTPUT_DIR/${filename%.in}.in"
+        infile="$OUTPUT_DIR/${filename%.in}.in"
     else
-        echo "$?" > "$output_code"
+        echo "[${RED}ERROR${RESET}] Unknown infile type for test $test_id"
+        fail=$((fail + 1))
+        continue
+    fi
+
+    echo "${BOLD}${YELLOW}Test ID: $test_id $test_spec_file${RESET}"
+
+    status=0
+    if "$BIN" < "$infile" > "$output_out" 2> "$output_err"; then
+        status=$?
+    else
+        status=$?
     fi
     
-    for f in "$expected_out" "$output_out" "$expected_err" "$output_err" "$expected_code" "$expected_code"; do
-        [ -f "$f" ] && sed -i 's/\r$//' "$f"
-    done
+    # for f in "$expected_out" "$output_out" "$expected_err" "$output_err" "$expected_code" "$expected_code"; do
+    #     [ -f "$f" ] && sed -i 's/\r$//' "$f"
+    # done
 
     ok=true
     
-    if [ -f "$expected_out" ]; then
-        if ! diff -q "$expected_out" "$output_out" >/dev/null; then
+    # Compare stdout
+    if [ $(yq -r '.expected_stdout.type' "$test_spec_file") == "file" ]; then
+        expected_out=$( yq -r '.expected_stdout.file' "$test_spec_file" )
+        if [ -f "$expected_out" ]; then
+            if ! diff -q "$expected_out" "$output_out" >/dev/null; then
+                ok=false
+            fi
+            diff --new-line-format="OUTPUT: ${RED}%L${RESET}" \
+                --old-line-format="EXPECTED: ${GREEN}%L${RESET}" \
+                --unchanged-line-format="OUTPUT: ${GREEN}%L${RESET}" \
+                "$expected_out" "$output_out" || true
+        else
+            echo "[${YELLOW}WARN${RESET}] No expected stdout file for $filename"
             ok=false
         fi
-        diff --new-line-format="OUTPUT: ${RED}%L${RESET}" \
-            --old-line-format="EXPECTED: ${GREEN}%L${RESET}" \
-            --unchanged-line-format="OUTPUT: ${GREEN}%L${RESET}" \
-            "$expected_out" "$output_out" || true
+    elif [ $(yq -r '.type' "$test_spec_file") == "inline" ]; then
+        expected_out=$( yq -r '.expected_stdout.inline' "$test_spec_file" )
+        if [ -n "$expected_out" ]; then
+            if ! diff -q <(echo "$expected_out") "$output_out" >/dev/null; then
+                ok=false
+            fi
+            diff --new-line-format="OUTPUT: ${RED}%L${RESET}" \
+                --old-line-format="EXPECTED: ${GREEN}%L${RESET}" \
+                --unchanged-line-format="OUTPUT: ${GREEN}%L${RESET}" \
+                <(echo "$expected_out") "$output_out" || true
+        else
+            echo "[${YELLOW}WARN${RESET}] No expected stdout inline content for $filename"
+            ok=false
+        fi
     else
-        echo "[${YELLOW}WARN${RESET}] No expected stdout file for $filename"
+        echo "[${YELLOW}WARN${RESET}] Unknown expected_stdout type for $filename"
         ok=false
     fi
 
     # Compare stderr
-    if [ -f "$expected_err" ]; then
-        if ! diff -q "$expected_err" "$output_err" >/dev/null; then
-            echo "[${RED}FAIL${RESET}] Stderr mismatch for $filename"
+    if [ $(yq -r '.expected_stderr.type' "$test_spec_file") == "file" ]; then
+        expected_err=$( yq -r '.expected_stderr.file' "$test_spec_file" )
+        if [ -f "$expected_err" ]; then
+            if ! diff -q "$expected_err" "$output_err" >/dev/null; then
+                ok=false
+            fi
             diff --new-line-format="OUTPUT: ${RED}%L${RESET}" \
-                 --old-line-format="EXPECTED: ${GREEN}%L${RESET}" \
-                 --unchanged-line-format=" ${GREEN}%L${RESET}" \
-                 "$expected_err" "$output_err" || true
+                --old-line-format="EXPECTED: ${GREEN}%L${RESET}" \
+                --unchanged-line-format="OUTPUT: ${GREEN}%L${RESET}" \
+                "$expected_err" "$output_err" || true
+        else
+            echo "[${YELLOW}WARN${RESET}] No expected stdout file for $filename"
             ok=false
         fi
+    elif [ $(yq -r '.type' "$test_spec_file") == "inline" ]; then
+        expected_err=$( yq -r '.expected_stderr.inline' "$test_spec_file" )
+        if [ -n "$expected_err" ]; then
+            if ! diff -q <(echo "$expected_err") "$output_err" >/dev/null; then
+                ok=false
+            fi
+            diff --new-line-format="OUTPUT: ${RED}%L${RESET}" \
+                --old-line-format="EXPECTED: ${GREEN}%L${RESET}" \
+                --unchanged-line-format="OUTPUT: ${GREEN}%L${RESET}" \
+                <(echo "$expected_err") "$output_err" || true
+        else
+            echo "[${YELLOW}WARN${RESET}] No expected stdout inline content for $filename"
+            ok=false
+        fi
+    else
+        echo "[${YELLOW}WARN${RESET}] Unknown expected_stderr type for $filename"
+        ok=false
     fi
 
     # Compare exit code
-    if [ -f "$expected_code" ]; then
-        if ! diff -q "$expected_code" "$output_code" >/dev/null; then
-            echo "[${RED}FAIL${RESET}] Exit code mismatch for $filename"
-            echo "EXPECTED: ${GREEN}$(cat "$expected_code")${RESET}"
-            echo "OUTPUT:   ${RED}$(cat "$output_code")${RESET}"
-            ok=false
-        fi
+    expected_code=$( yq -r '.expected_ec' "$test_spec_file" )
+    if [ "$status" -ne "$expected_code" ]; then
+        echo "Exit code mismatch"
+        echo "EXPECTED: ${GREEN}$expected_code${RESET}"
+        echo "OUTPUT: ${RED}$status${RESET}"
+        ok=false
+    else
+        echo "Exit code: ${GREEN}$status${RESET}"
     fi
 
     if $ok; then
