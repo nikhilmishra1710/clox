@@ -2,9 +2,9 @@ id: CLOX-001
 
 input:
   type: 
-    file
-  file:
-    tests/inputs/test1.in
+    inline
+  inline:
+    10 13
   
 
 expected_stdout:
@@ -12,18 +12,28 @@ expected_stdout:
     file
   file:
     tests/expected/test1.out.expected
+  inline:
+    - The sum is 23
+    - The product is 130
   
 expected_stderr:
   type:
     file
   file:
     tests/expected/test1.err.expected
+
 expected_ec: 65
 
 hooks:
   pre:
-    - echo "This is a pre-hook"
+    type:
+      file
+    file:
+      - tests/inputs/test1.pre.hook
   post:
-    - echo "This is a post-hook"
+    type:
+      inline
+    inline:
+      - echo "This is a post-hook"
 
 timeout: 10
