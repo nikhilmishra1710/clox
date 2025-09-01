@@ -21,6 +21,7 @@ RESET=$(tput sgr0)
 
 pass=0
 fail=0
+skip=0
 declare -a results=()
 
 run_hooks() {
@@ -71,7 +72,7 @@ compare_files() {
         else
             echo "OUTPUT: ${GREEN}$actual_line${RESET}"
         fi
-        
+
         if [ "${expected_eof:-false}" = true ] && [ "${actual_eof:-false}" = true ]; then
             break
         fi
@@ -89,15 +90,31 @@ normalize_line_endings() {
     done
 }
 
+now_ms() {
+    if date +%s%3N >/dev/null 2>&1; then
+        date +%s%3N
+    else
+        date +%s%N | awk '{print int($1/1000000)}'
+    fi
+}
+
 for test_spec_file in "$INPUT_DIR"/*.yaml;
 do
     filename=$(basename -- "$test_spec_file" .yaml)
+    test_id=$( yq -r '.id' "$test_spec_file" )
+    echo "${BOLD}${YELLOW}Test ID: $test_id $test_spec_file${RESET}"
+
+    skip_test=$( yq -r '.skip // false' "$test_spec_file" )
+    if [ "$skip_test" == "true" ]; then
+        echo "[${BLUE}SKIP${RESET}] Skipping test $filename"
+        skip=$((skip + 1))
+        results+=("$test_id|N/A|SKIP")
+        continue
+    fi
 
     output_out="$OUTPUT_DIR/${filename}.out"
     output_err="$OUTPUT_DIR/${filename}.err"
 
-    test_id=$( yq -r '.id' "$test_spec_file" )
-    
     infile_type=$( yq -r '.input.type' "$test_spec_file" )
 
     if [ "$infile_type" == "file" ]; then
@@ -118,8 +135,6 @@ do
         continue
     fi
 
-    echo "${BOLD}${YELLOW}Test ID: $test_id $test_spec_file${RESET}"
-
     pre_hooks_type=$( yq -r '.hooks.pre.type // "none"' "$test_spec_file" )
     if [ "$pre_hooks_type" != "none" ]; then
         echo "Running pre-test hooks..."
@@ -133,7 +148,7 @@ do
     set +e
     status=0
     start_time=$(date +%s%3N)
-    echo "Runing test..."
+    echo "Running: $BIN $args < $infile"
     "$BIN" $args < "$infile" > "$output_out" 2> "$output_err"
     status=$?
     end_time=$(date +%s%3N)
@@ -246,6 +261,8 @@ for r in "${results[@]}"; do
     padded_stat=$(printf "%-6s" "$stat")
     if [ "$stat" = "PASS" ]; then
         colored_stat="${GREEN}${padded_stat}${RESET}"
+    elif [ "$stat" = "SKIP" ]; then
+        colored_stat="${BLUE}${padded_stat}${RESET}"
     else
         colored_stat="${RED}${padded_stat}${RESET}"
     fi
@@ -253,4 +270,8 @@ for r in "${results[@]}"; do
     printf "| %-20s | %-10s | %s |\n" "$id" "$dur" "$colored_stat"
 done
 echo "+----------------------+------------+--------+"
-echo "Passed: $pass, Failed: $fail"
+echo "Passed: $pass, Failed: $fail, Skipped: $skip, Total: $((pass + fail + skip))"
+
+if [ $fail -ne 0 ]; then
+    exit 1
+fi

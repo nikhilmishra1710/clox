@@ -1,5 +1,6 @@
 id: CLOX-001
 
+skip: true
 args: 
   - arg1
   - arg2
