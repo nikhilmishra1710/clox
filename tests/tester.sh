@@ -147,11 +147,11 @@ do
     args=$(yq -r '.args // [] | if type=="string" then . else .[] end' "$test_spec_file")
     set +e
     status=0
-    start_time=$(date +%s%3N)
+    start_time=$(now_ms)
     echo "Running: $BIN $args < $infile"
     "$BIN" $args < "$infile" > "$output_out" 2> "$output_err"
     status=$?
-    end_time=$(date +%s%3N)
+    end_time=$(now_ms)
     duration=$((end_time - start_time))
     if [ $duration -ge 1000 ]; then
         dur_fmt="$((duration/1000)).$((duration%1000))s"
