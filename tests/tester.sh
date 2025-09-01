@@ -144,7 +144,7 @@ do
         fi
     fi
 
-    args=$(yq -r '.args // [] | if type=="string" then . else .[] end' "$test_spec_file")
+    args=$(yq -r '.args // [] | if type=="string" then . else join(" ") end' "$test_spec_file")
     set +e
     status=0
     start_time=$(now_ms)
