@@ -9,7 +9,7 @@ int main(int argc, char* argv[]) {
     } else {
         printf("No arguments passed to the program.\n");
     }
-    
+
     int n,m;
 
     printf("Hello world starting with Clox project!\n");
