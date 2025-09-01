@@ -37,23 +37,39 @@ declare -a results=()
 run_hooks() {
     local type=$1
     local path=$2
-    if [ "$type" == "file" ]; then
-        hooks=$( yq -r "$path.file | if type==\"string\" then . else .[] end" "$test_spec_file" )
-    elif [ "$type" == "inline" ]; then
-        hooks=$( yq -r "$path.inline | if type==\"string\" then . else .[] end" "$test_spec_file" )
-    else
-        echo "[${YELLOW}WARN${RESET}] Unknown hooks type"
-        return 1
-    fi
-    while IFS= read -r hook; do
-        if ! bash -c "$hook"; then
-            echo "[${RED}ERROR${RESET}] Hook failed: $hook"
+    local hooks
+
+    if [ "$type" = "file" ]; then
+        hooks=$(yq -r "$path.file | if type == \"string\" then . else .[] end" "$test_spec_file")
+        while IFS= read -r hook; do
+            [ -z "$hook" ] && continue
+            echo "Running hook file: $hook"
+            if ! bash "$hook"; then
+                echo "[${RED}ERROR${RESET}] Hook failed: $hook"
+                return 1
+            fi
+        done <<< "$hooks"
+
+    elif [ "$type" = "inline" ]; then
+        hooks=$(yq -r "$path.inline | if type == \"string\" then . else .[] end" "$test_spec_file")
+        [ -z "$hooks" ] && return 0
+
+        local temp="${TMP_DIR}/temp.hook"
+        echo "$hooks" > "$temp"
+        echo "Running inline hook(s):"
+        if ! bash "$temp"; then
+            echo "[${RED}ERROR${RESET}] Inline hook(s) failed"
             return 1
         fi
-    done <<< "$hooks"
+
+    else
+        echo "[${YELLOW}WARN${RESET}] Unknown hooks type: $type"
+        return 1
+    fi
 
     return 0
 }
+
 
 compare_files() {
     local expected_file=$1
