@@ -1,4 +1,5 @@
 # clox
+[![Build Status](https://github.com/nikahilmishra1710/clox/actions/workflows/testing.yml/badge.svg)](https://github.com/nikahilmishra1710/clox/actions)
 
 `clox` is a bytecode virtual machine with a compiler — a compiler–interpreter hybrid inspired by Bob Nystrom's *Crafting Interpreters*.  
 It compiles source code into bytecode and immediately executes it on a simple stack-based virtual machine.
