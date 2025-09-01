@@ -1,3 +1,6 @@
+Arguments passed to the program:
+Argument 1: arg1
+Argument 2: arg2
 Hello world starting with Clox project!
 You entered: 10 and 13
 Sum: 23

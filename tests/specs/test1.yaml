@@ -1,5 +1,9 @@
 id: CLOX-001
 
+args: 
+  - arg1
+  - arg2
+
 input:
   type: 
     inline

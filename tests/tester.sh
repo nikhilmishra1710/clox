@@ -56,9 +56,7 @@ compare_files() {
         IFS= read -r -u 3 expected_line || expected_eof=true
         IFS= read -r -u 4 actual_line || actual_eof=true
 
-        if [ "${expected_eof:-false}" = true ] && [ "${actual_eof:-false}" = true ]; then
-            break
-        elif [ "${expected_eof:-false}" = true ] && [ "${actual_eof:-false}" != true ]; then
+        if [ "${expected_eof:-false}" = true ] && [ "${actual_eof:-false}" != true ]; then
             echo "EXPECTED: ${GREEN}<EOF>${RESET}"
             echo "OUTPUT: ${RED}$actual_line${RESET}"
             return 1
@@ -72,6 +70,10 @@ compare_files() {
             return 1
         else
             echo "OUTPUT: ${GREEN}$actual_line${RESET}"
+        fi
+        
+        if [ "${expected_eof:-false}" = true ] && [ "${actual_eof:-false}" = true ]; then
+            break
         fi
     done
 
@@ -127,11 +129,12 @@ do
         fi
     fi
 
+    args=$(yq -r '.args // [] | if type=="string" then . else .[] end' "$test_spec_file")
     set +e
     status=0
     start_time=$(date +%s%3N)
     echo "Runing test..."
-    "$BIN" < "$infile" > "$output_out" 2> "$output_err"
+    "$BIN" $args < "$infile" > "$output_out" 2> "$output_err"
     status=$?
     end_time=$(date +%s%3N)
     duration=$((end_time - start_time))
