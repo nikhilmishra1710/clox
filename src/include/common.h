@@ -7,6 +7,4 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define  lu long unsigned int
-
 #endif
