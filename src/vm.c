@@ -11,6 +11,26 @@ static void resetStack(void)
     vm.stackTop = vm.stack;
 }
 
+static char *getType(Value value)
+{
+    if (IS_NUMBER(value))
+        return "number";
+    if (IS_BOOL(value))
+        return "boolean";
+    if (IS_NIL(value))
+        return "nil";
+    if (IS_OBJ(value))
+    {
+        switch (OBJ_TYPE(value))
+        {
+        case OBJ_STRING:
+            return "string";
+            // add more as needed
+        }
+    }
+    return "unknown";
+}
+
 static void runtimeError(const char *format, ...)
 {
     va_list args;
@@ -29,11 +49,13 @@ void initVM(void)
 {
     resetStack();
     vm.objects = NULL;
+    initTable(&vm.globals);
     initTable(&vm.strings);
 }
 
 void freeVM(void)
 {
+    freeTable(&vm.globals);
     freeTable(&vm.strings);
     freeObjects();
 }
@@ -79,17 +101,18 @@ static InterpretResult run(void)
 {
 #define READ_BYTE() (*vm.ip++)
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
-#define BINARY_OP(valueType, op)                        \
-    do                                                  \
-    {                                                   \
-        if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) \
-        {                                               \
-            runtimeError("Operands must be numbers.");  \
-            return INTERPRET_RUNTIME_ERROR;             \
-        }                                               \
-        double b = AS_NUMBER(pop());                    \
-        double a = AS_NUMBER(pop());                    \
-        push(valueType(a op b));                        \
+#define READ_STRING() AS_STRING(READ_CONSTANT())
+#define BINARY_OP(valueType, op)                                                                                              \
+    do                                                                                                                        \
+    {                                                                                                                         \
+        if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1)))                                                                       \
+        {                                                                                                                     \
+            runtimeError("Operands must be numbers\nExpected number but got %s and %s.", getType(peek(0)), getType(peek(1))); \
+            return INTERPRET_RUNTIME_ERROR;                                                                                   \
+        }                                                                                                                     \
+        double b = AS_NUMBER(pop());                                                                                          \
+        double a = AS_NUMBER(pop());                                                                                          \
+        push(valueType(a op b));                                                                                              \
     } while (false)
 
     for (;;)
@@ -127,6 +150,53 @@ static InterpretResult run(void)
         case OP_NIL:
         {
             push(NIL_VAL);
+            break;
+        }
+        case OP_POP:
+        {
+            pop();
+            break;
+        }
+        case OP_GET_LOCAL:
+        {
+            uint8_t slot = READ_BYTE();
+            push(vm.stack[slot]);
+            break;
+        }
+        case OP_SET_LOCAL:
+        {
+            uint8_t slot = READ_BYTE();
+            vm.stack[slot] = peek(0);
+            break;
+        }
+        case OP_SET_GLOBAL:
+        {
+            ObjString *name = READ_STRING();
+            if (tableSet(&vm.globals, name, peek(0)))
+            {
+                tableDelete(&vm.globals, name);
+                runtimeError("Undefined variable '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+        }
+        case OP_GET_GLOBAL:
+        {
+            ObjString *name = READ_STRING();
+            Value value;
+            if (!tableGet(&vm.globals, name, &value))
+            {
+                runtimeError("Undefined variable '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            push(value);
+            break;
+        }
+        case OP_DEFINE_GLOBAL:
+        {
+            ObjString *name = READ_STRING();
+            tableSet(&vm.globals, name, peek(0));
+            pop();
             break;
         }
         case OP_EQUAL:
@@ -195,16 +265,21 @@ static InterpretResult run(void)
             push(NUMBER_VAL(-AS_NUMBER(pop())));
             break;
         }
-        case OP_RETURN:
+        case OP_PRINT:
         {
             printValue(pop());
             printf("\n");
+            break;
+        }
+        case OP_RETURN:
+        {
             return INTERPRET_OK;
         }
         }
     }
 
 #undef BINARY_OP
+#undef READ_STRING
 #undef READ_CONSTANT
 #undef READ_BYTE
 }

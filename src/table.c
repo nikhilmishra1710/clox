@@ -14,13 +14,13 @@ void initTable(Table *table)
 
 void freeTable(Table *table)
 {
-    FREE_ARRAY(Entry, table, table->capacity);
+    FREE_ARRAY(Entry, table->entries, table->capacity);
     initTable(table);
 }
 
 static Entry *findEntry(Entry *entries, int capacity, ObjString *key)
 {
-    uint32_t index = key->hash % capacity;
+    uint32_t index = key->hash % (uint32_t)capacity;
     Entry *tombstone = NULL;
     for (;;)
     {
@@ -49,7 +49,7 @@ static Entry *findEntry(Entry *entries, int capacity, ObjString *key)
             return entry;
         }
 
-        index = (index + 1) % capacity;
+        index = (index + 1) % (uint32_t)capacity;
     }
 }
 
@@ -111,7 +111,7 @@ ObjString *tableFindString(Table *table, const char *chars,
     if (table->count == 0)
         return NULL;
 
-    uint32_t index = hash % table->capacity;
+    uint32_t index = hash % (uint32_t)table->capacity;
     for (;;)
     {
         Entry *entry = &table->entries[index];
@@ -123,13 +123,13 @@ ObjString *tableFindString(Table *table, const char *chars,
         }
         else if (entry->key->length == length &&
                  entry->key->hash == hash &&
-                 memcmp(entry->key->chars, chars, length) == 0)
+                 memcmp(entry->key->chars, chars, (size_t)length) == 0)
         {
             // We found it.
             return entry->key;
         }
 
-        index = (index + 1) % table->capacity;
+        index = (index + 1) % (uint32_t)table->capacity;
     }
 }
 

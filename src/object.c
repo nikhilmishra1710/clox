@@ -39,7 +39,7 @@ static uint32_t hashString(const char *key, int length)
 
 ObjString *copyString(const char *chars, int length)
 {
-    uint32_t hash = makeHash(chars, length);
+    uint32_t hash = hashString(chars, length);
     ObjString *interned = tableFindString(&vm.strings, chars, length, hash);
     if (interned != NULL)
         return interned;
@@ -51,7 +51,7 @@ ObjString *copyString(const char *chars, int length)
 
 ObjString *takeString(char *chars, int length)
 {
-    uint32_t hash = makeHash(chars, length);
+    uint32_t hash = hashString(chars, length);
     ObjString *interned = tableFindString(&vm.strings, chars, length, hash);
     if (interned != NULL)
     {
