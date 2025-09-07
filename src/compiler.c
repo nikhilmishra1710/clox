@@ -564,7 +564,6 @@ static void forStatement(void) {
         exitJump = emitJump(OP_JUMP_IF_FALSE);
         emitByte(OP_POP);
     }
-    // consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
 
     if (!match(TOKEN_RIGHT_PAREN)) {
         int bodyJump = emitJump(OP_JUMP);
@@ -579,6 +578,7 @@ static void forStatement(void) {
     }
     statement();
     emitLoop(loopStart);
+
     if (exitJump != -1) {
         patchJump(exitJump);
         emitByte(OP_POP); // Condition.
@@ -600,6 +600,45 @@ static void whileStatement(void) {
 
     patchJump(exitJump);
     emitByte(OP_POP);
+}
+
+static void switchStatement(void) {
+    consume(TOKEN_LEFT_PAREN, "Expected '(' after switch.");
+    expression();
+    consume(TOKEN_RIGHT_PAREN, "Expected ')' after condition.");
+
+    consume(TOKEN_LEFT_BRACE, "Expected '{' after condition.");
+
+    emitByte(OP_STORE_SWITCH);
+
+    int caseJumps[256];
+    int caseCount = 0;
+    while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_DEFAULT) && !check(TOKEN_EOF)) {
+        consume(TOKEN_CASE, "Expected 'case'.");
+        expression();
+        emitByte(OP_COMPARE_SWITCH);
+        consume(TOKEN_COLON, "Expected ':' after case value.");
+        int jumpNext = emitJump(OP_JUMP_IF_FALSE);
+
+        statement();
+
+        caseJumps[caseCount++] = emitJump(OP_JUMP);
+
+        patchJump(jumpNext);
+    }
+
+    if (match(TOKEN_DEFAULT)) {
+        consume(TOKEN_COLON, "Expect ':' after 'default'.");
+        while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
+            statement();
+        }
+    }
+
+    consume(TOKEN_RIGHT_BRACE, "Expected '}' at end of switch.");
+
+    for (int i = 0; i < caseCount; i++) {
+        patchJump(caseJumps[i]);
+    }
 }
 
 static void synchronize(void) {
@@ -629,6 +668,8 @@ static void synchronize(void) {
 static void statement() {
     if (match(TOKEN_PRINT)) {
         printStatement();
+    } else if (match(TOKEN_SWITCH)) {
+        switchStatement();
     } else if (match(TOKEN_FOR)) {
         forStatement();
     } else if (match(TOKEN_IF)) {

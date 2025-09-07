@@ -19,3 +19,15 @@ for(var x=0; x<5; x=x+1) {
 }
 
 print "For loop are done";
+
+var y=4;
+switch(y) {
+    case 1:
+        print "switch val 1";
+    case 4:
+        print "switch val 4";
+    default:
+        print "No default val";
+}
+
+print "Switch are done";

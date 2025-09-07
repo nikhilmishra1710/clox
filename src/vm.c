@@ -243,6 +243,15 @@ static InterpretResult run(void) {
             vm.ip -= offset;
             break;
         }
+        case OP_STORE_SWITCH: {
+            vm.switchValue = pop();
+            break;
+        }
+        case OP_COMPARE_SWITCH: {
+            Value caseValue = pop();
+            push(BOOL_VAL(valuesEqual(vm.switchValue, caseValue)));
+            break;
+        }
         case OP_RETURN: {
             return INTERPRET_OK;
         }
