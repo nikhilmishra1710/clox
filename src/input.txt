@@ -4,6 +4,7 @@ if (5>3){
     print a;
 }
 print a;
+print "Blocks are done";
 
 var i=0;
 while (i < 5) {
@@ -12,3 +13,9 @@ while (i < 5) {
 }
 
 print "While loop are done";
+
+for(var x=0; x<5; x=x+1) {
+    print x;
+}
+
+print "For loop are done";
