@@ -1,6 +1,14 @@
 var a = "byee";
-{
+if (5>3){
     var a = "hello";
     print a;
 }
 print a;
+
+var i=0;
+while (i < 5) {
+    i = i + 1;
+    print i;
+}
+
+print "While loop are done";

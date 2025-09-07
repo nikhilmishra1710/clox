@@ -1,6 +1,6 @@
 #include "include/table.h"
 #include "include/memory.h"
-#include "include/object.h"
+#include "include/object.h" // IWYU pragma: keep
 #include "include/value.h"
 
 #define TABLE_MAX_LOAD 0.75
