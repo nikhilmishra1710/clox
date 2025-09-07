@@ -3,15 +3,13 @@
 
 #include "common.h"
 
-typedef struct
-{
-    const char *start;
-    const char *current;
-    int line;
+typedef struct {
+    const char* start;
+    const char* current;
+    int         line;
 } Scanner;
 
-typedef enum
-{
+typedef enum {
     // Single-character tokens.
     TOKEN_LEFT_PAREN,
     TOKEN_RIGHT_PAREN,
@@ -61,15 +59,14 @@ typedef enum
     TOKEN_EOF
 } TokenType;
 
-typedef struct
-{
-    TokenType type;
-    const char *start;
-    int length;
-    int line;
+typedef struct {
+    TokenType   type;
+    const char* start;
+    int         length;
+    int         line;
 } Token;
 
-void initScanner(const char *source);
+void  initScanner(const char* source);
 Token scanToken(void);
 
 #endif

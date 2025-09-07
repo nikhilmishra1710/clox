@@ -27,27 +27,27 @@ typedef enum {
     OP_NEGATE,
     OP_PRINT,
     OP_RETURN
-}OpCode;
+} OpCode;
 
 typedef struct {
     int line;
     int count;
 } LineInfo;
 typedef struct {
-    int count;
-    int capacity;
-    uint8_t* code;
+    int        count;
+    int        capacity;
+    uint8_t*   code;
     ValueArray constants;
 
-    int lineCount;
-    int lineCapacity;
+    int       lineCount;
+    int       lineCapacity;
     LineInfo* lines;
-}Chunk;
+} Chunk;
 
 void initChunk(Chunk* chunk);
 void freeChunk(Chunk* chunk);
 void writeChunk(Chunk* chunk, uint8_t code, int line);
-int addConstant(Chunk* chunk, Value value);
+int  addConstant(Chunk* chunk, Value value);
 
 int getLine(Chunk* chunk, int offset);
 
