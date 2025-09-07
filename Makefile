@@ -100,6 +100,11 @@ clean:
 lint:
 	clang-tidy $(SRCS) -- $(CFLAGS)
 
+.PHONY: format
+format:
+	@echo "Formatting source files with clang-format"
+	clang-format -i $(SRC_FILES) $(HDR_FILES)
+
 .PHONY: coverage
 coverage: clean
 	@echo "Building testing executable"

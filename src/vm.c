@@ -35,7 +35,7 @@ static void runtimeError(const char* format, ...) {
     fputs("\n", stderr);
 
     size_t instruction = (size_t) (vm.ip - vm.chunk->code - 1);
-    int    line        = getLine(vm.chunk, (int) instruction);
+    int line = getLine(vm.chunk, (int) instruction);
     fprintf(stderr, "[line %d] in script\n", line);
     resetStack();
 }
@@ -75,8 +75,8 @@ static void concatenate(void) {
     ObjString* b = AS_STRING(pop());
     ObjString* a = AS_STRING(pop());
 
-    int   length = a->length + b->length;
-    char* chars  = ALLOCATE(char, length + 1);
+    int length = a->length + b->length;
+    char* chars = ALLOCATE(char, length + 1);
     memcpy(chars, a->chars, (size_t) a->length);
     memcpy(chars + a->length, b->chars, (size_t) b->length);
     chars[length] = '\0';
@@ -141,7 +141,7 @@ static InterpretResult run(void) {
             break;
         }
         case OP_SET_LOCAL: {
-            uint8_t slot   = READ_BYTE();
+            uint8_t slot = READ_BYTE();
             vm.stack[slot] = peek(0);
             break;
         }
@@ -156,7 +156,7 @@ static InterpretResult run(void) {
         }
         case OP_GET_GLOBAL: {
             ObjString* name = READ_STRING();
-            Value      value;
+            Value value;
             if (!tableGet(&vm.globals, name, &value)) {
                 runtimeError("Undefined variable '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
@@ -248,7 +248,7 @@ InterpretResult interpret(const char* source) {
     }
 
     vm.chunk = &chunk;
-    vm.ip    = vm.chunk->code;
+    vm.ip = vm.chunk->code;
 
     InterpretResult result = run();
 

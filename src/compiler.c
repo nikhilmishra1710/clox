@@ -23,25 +23,25 @@ typedef enum {
 
 typedef void (*ParseFn)(bool canAssign);
 typedef struct {
-    ParseFn    prefix;
-    ParseFn    infix;
+    ParseFn prefix;
+    ParseFn infix;
     Precedence precedence;
 } ParseRule;
 
 typedef struct {
     Token name;
-    int   depth;
+    int depth;
 } Local;
 
 typedef struct {
     Local locals[256];
-    int   localCount;
-    int   scopeDepth;
+    int localCount;
+    int scopeDepth;
 } Compiler;
 
-Parser    parser;
+Parser parser;
 Compiler* current = NULL;
-Chunk*    compilingChunk;
+Chunk* compilingChunk;
 
 static Chunk* currentChunk(void) {
     return compilingChunk;
@@ -134,7 +134,7 @@ static void emitConstant(Value value) {
 static void initCompiler(Compiler* compiler) {
     compiler->localCount = 0;
     compiler->scopeDepth = 0;
-    current              = compiler;
+    current = compiler;
 }
 
 static void endCompiler(void) {
@@ -159,10 +159,10 @@ static void endScope(void) {
     }
 }
 
-static void       expression(void);
+static void expression(void);
 static ParseRule* getRule(TokenType type);
-static void       parsePrecedence(Precedence precedence);
-static void       declaration(void);
+static void parsePrecedence(Precedence precedence);
+static void declaration(void);
 
 static void ternary(bool canAssign) {
     (void) canAssign;
@@ -177,8 +177,8 @@ static void ternary(bool canAssign) {
 
 static void binary(bool canAssign) {
     (void) canAssign;
-    TokenType  operatorType = parser.previous.type;
-    ParseRule* rule         = getRule(operatorType);
+    TokenType operatorType = parser.previous.type;
+    ParseRule* rule = getRule(operatorType);
     parsePrecedence((Precedence) (rule->precedence + 1));
 
     switch (operatorType) {
@@ -281,7 +281,7 @@ static void addLocal(Token name) {
         return;
     }
     Local* local = &current->locals[current->localCount++];
-    local->name  = name;
+    local->name = name;
     local->depth = -1;
 }
 
@@ -305,12 +305,12 @@ static void declareVariable(void) {
 
 static void namedVariable(Token name, bool canAssign) {
     uint8_t getOp, setOp;
-    int     arg = resolveLocal(current, &name);
+    int arg = resolveLocal(current, &name);
     if (arg != -1) {
         getOp = OP_GET_LOCAL;
         setOp = OP_SET_LOCAL;
     } else {
-        arg   = identifierConstant(&name);
+        arg = identifierConstant(&name);
         getOp = OP_GET_GLOBAL;
         setOp = OP_SET_GLOBAL;
     }
@@ -346,47 +346,47 @@ static void unary(bool canAssign) {
 }
 
 ParseRule rules[] = {
-    [TOKEN_LEFT_PAREN]    = {grouping, NULL, PREC_NONE},
-    [TOKEN_RIGHT_PAREN]   = {NULL, NULL, PREC_NONE},
-    [TOKEN_LEFT_BRACE]    = {NULL, NULL, PREC_NONE},
-    [TOKEN_RIGHT_BRACE]   = {NULL, NULL, PREC_NONE},
-    [TOKEN_COMMA]         = {NULL, NULL, PREC_NONE},
-    [TOKEN_DOT]           = {NULL, NULL, PREC_NONE},
-    [TOKEN_MINUS]         = {unary, binary, PREC_TERM},
-    [TOKEN_PLUS]          = {NULL, binary, PREC_TERM},
-    [TOKEN_SEMICOLON]     = {NULL, NULL, PREC_NONE},
-    [TOKEN_SLASH]         = {NULL, binary, PREC_FACTOR},
-    [TOKEN_STAR]          = {NULL, binary, PREC_FACTOR},
-    [TOKEN_QUESTION]      = {NULL, ternary, PREC_TERNARY},
-    [TOKEN_BANG]          = {unary, NULL, PREC_NONE},
-    [TOKEN_BANG_EQUAL]    = {NULL, binary, PREC_EQUALITY},
-    [TOKEN_EQUAL]         = {NULL, NULL, PREC_NONE},
-    [TOKEN_EQUAL_EQUAL]   = {NULL, binary, PREC_EQUALITY},
-    [TOKEN_GREATER]       = {NULL, binary, PREC_COMPARISON},
+    [TOKEN_LEFT_PAREN] = {grouping, NULL, PREC_NONE},
+    [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
+    [TOKEN_LEFT_BRACE] = {NULL, NULL, PREC_NONE},
+    [TOKEN_RIGHT_BRACE] = {NULL, NULL, PREC_NONE},
+    [TOKEN_COMMA] = {NULL, NULL, PREC_NONE},
+    [TOKEN_DOT] = {NULL, NULL, PREC_NONE},
+    [TOKEN_MINUS] = {unary, binary, PREC_TERM},
+    [TOKEN_PLUS] = {NULL, binary, PREC_TERM},
+    [TOKEN_SEMICOLON] = {NULL, NULL, PREC_NONE},
+    [TOKEN_SLASH] = {NULL, binary, PREC_FACTOR},
+    [TOKEN_STAR] = {NULL, binary, PREC_FACTOR},
+    [TOKEN_QUESTION] = {NULL, ternary, PREC_TERNARY},
+    [TOKEN_BANG] = {unary, NULL, PREC_NONE},
+    [TOKEN_BANG_EQUAL] = {NULL, binary, PREC_EQUALITY},
+    [TOKEN_EQUAL] = {NULL, NULL, PREC_NONE},
+    [TOKEN_EQUAL_EQUAL] = {NULL, binary, PREC_EQUALITY},
+    [TOKEN_GREATER] = {NULL, binary, PREC_COMPARISON},
     [TOKEN_GREATER_EQUAL] = {NULL, binary, PREC_COMPARISON},
-    [TOKEN_LESS]          = {NULL, binary, PREC_COMPARISON},
-    [TOKEN_LESS_EQUAL]    = {NULL, binary, PREC_COMPARISON},
-    [TOKEN_IDENTIFIER]    = {variable, NULL, PREC_NONE},
-    [TOKEN_STRING]        = {string, NULL, PREC_NONE},
-    [TOKEN_NUMBER]        = {number, NULL, PREC_NONE},
-    [TOKEN_AND]           = {NULL, NULL, PREC_NONE},
-    [TOKEN_CLASS]         = {NULL, NULL, PREC_NONE},
-    [TOKEN_ELSE]          = {NULL, NULL, PREC_NONE},
-    [TOKEN_FALSE]         = {literal, NULL, PREC_NONE},
-    [TOKEN_FOR]           = {NULL, NULL, PREC_NONE},
-    [TOKEN_FUN]           = {NULL, NULL, PREC_NONE},
-    [TOKEN_IF]            = {NULL, NULL, PREC_NONE},
-    [TOKEN_NIL]           = {literal, NULL, PREC_NONE},
-    [TOKEN_OR]            = {NULL, NULL, PREC_NONE},
-    [TOKEN_PRINT]         = {NULL, NULL, PREC_NONE},
-    [TOKEN_RETURN]        = {NULL, NULL, PREC_NONE},
-    [TOKEN_SUPER]         = {NULL, NULL, PREC_NONE},
-    [TOKEN_THIS]          = {NULL, NULL, PREC_NONE},
-    [TOKEN_TRUE]          = {literal, NULL, PREC_NONE},
-    [TOKEN_VAR]           = {NULL, NULL, PREC_NONE},
-    [TOKEN_WHILE]         = {NULL, NULL, PREC_NONE},
-    [TOKEN_ERROR]         = {NULL, NULL, PREC_NONE},
-    [TOKEN_EOF]           = {NULL, NULL, PREC_NONE},
+    [TOKEN_LESS] = {NULL, binary, PREC_COMPARISON},
+    [TOKEN_LESS_EQUAL] = {NULL, binary, PREC_COMPARISON},
+    [TOKEN_IDENTIFIER] = {variable, NULL, PREC_NONE},
+    [TOKEN_STRING] = {string, NULL, PREC_NONE},
+    [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
+    [TOKEN_AND] = {NULL, NULL, PREC_NONE},
+    [TOKEN_CLASS] = {NULL, NULL, PREC_NONE},
+    [TOKEN_ELSE] = {NULL, NULL, PREC_NONE},
+    [TOKEN_FALSE] = {literal, NULL, PREC_NONE},
+    [TOKEN_FOR] = {NULL, NULL, PREC_NONE},
+    [TOKEN_FUN] = {NULL, NULL, PREC_NONE},
+    [TOKEN_IF] = {NULL, NULL, PREC_NONE},
+    [TOKEN_NIL] = {literal, NULL, PREC_NONE},
+    [TOKEN_OR] = {NULL, NULL, PREC_NONE},
+    [TOKEN_PRINT] = {NULL, NULL, PREC_NONE},
+    [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
+    [TOKEN_SUPER] = {NULL, NULL, PREC_NONE},
+    [TOKEN_THIS] = {NULL, NULL, PREC_NONE},
+    [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
+    [TOKEN_VAR] = {NULL, NULL, PREC_NONE},
+    [TOKEN_WHILE] = {NULL, NULL, PREC_NONE},
+    [TOKEN_ERROR] = {NULL, NULL, PREC_NONE},
+    [TOKEN_EOF] = {NULL, NULL, PREC_NONE},
 };
 
 static void parsePrecedence(Precedence precedence) {
@@ -525,8 +525,8 @@ bool compile(const char* source, Chunk* chunk) {
     initScanner(source);
     Compiler compiler;
     initCompiler(&compiler);
-    compilingChunk   = chunk;
-    parser.hadError  = false;
+    compilingChunk = chunk;
+    parser.hadError = false;
     parser.panicMode = false;
     advance();
     while (!match(TOKEN_EOF)) {

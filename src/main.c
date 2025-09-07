@@ -4,7 +4,7 @@
 static void repl(void) {
 #define MAX_LENGTH 1024
     char line[MAX_LENGTH];
-    int  lineNo = 1;
+    int lineNo = 1;
     for (;;) {
         printf("In[%d]: ", lineNo);
 
@@ -55,7 +55,7 @@ static char* readFile(const char* filePath) {
 }
 
 static void runFile(const char* filePath) {
-    char*           source = readFile(filePath);
+    char* source = readFile(filePath);
     InterpretResult result = interpret(source);
 
     if (result == INTERPRET_COMPILE_ERROR)

@@ -17,6 +17,6 @@
 #define ALLOCATE(type, count) ((type*) reallocate(NULL, 0, sizeof(type) * (size_t) (count)))
 
 void* reallocate(void* pointer, size_t oldSize, size_t newSize);
-void  freeObjects(void);
+void freeObjects(void);
 
 #endif

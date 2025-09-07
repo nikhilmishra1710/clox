@@ -1,0 +1,35 @@
+# .clang-format
+
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+
+# Braces & Indentation
+BreakBeforeBraces: Attach # put braces on a new line, like K&R / Linux style
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+
+# Spaces
+SpaceAfterCStyleCast: true
+SpaceBeforeParens: ControlStatements # if (...) not if(...)
+SpacesBeforeTrailingComments: 1
+SpaceInEmptyParentheses: false
+SpaceAfterTemplateKeyword: true
+
+# Alignments
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignTrailingComments: true
+
+# Wrapping
+ColumnLimit: 100 # max line length before wrapping
+ContinuationIndentWidth: 4
+
+# Pointers & References
+PointerAlignment: Left # int* ptr instead of int *ptr
+ReferenceAlignment: Left # int& ref instead of int &ref
+
+# Misc
+SortIncludes: true
