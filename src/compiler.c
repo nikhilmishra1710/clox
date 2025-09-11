@@ -1,4 +1,5 @@
 #include "include/compiler.h"
+#include "include/chunk.h"
 #include "include/object.h"
 #include "include/scanner.h"
 
@@ -33,7 +34,11 @@ typedef struct {
     int depth;
 } Local;
 
+typedef enum { TYPE_FUNCTION, TYPE_SCRIPT } FunctionType;
+
 typedef struct {
+    ObjFunction* function;
+    FunctionType type;
     Local locals[256];
     int localCount;
     int scopeDepth;
@@ -44,7 +49,7 @@ Compiler* current = NULL;
 Chunk* compilingChunk;
 
 static Chunk* currentChunk(void) {
-    return compilingChunk;
+    return &(current->function->chunk);
 }
 
 static void errorAt(Token* token, const char* message) {
@@ -161,19 +166,32 @@ static int emitJump(uint8_t instruction) {
     return currentChunk()->count - 2;
 }
 
-static void initCompiler(Compiler* compiler) {
+static void initCompiler(Compiler* compiler, FunctionType type) {
+    compiler->function = NULL;
+    compiler->type = type;
     compiler->localCount = 0;
     compiler->scopeDepth = 0;
+    compiler->function = newFunction();
     current = compiler;
+
+    Local* local = &current->locals[current->localCount++];
+    local->depth = 0;
+    local->name.start = "";
+    local->name.length = 0;
 }
 
-static void endCompiler(void) {
+static ObjFunction* endCompiler(void) {
     emitReturn();
+    ObjFunction* function = current->function;
+
 #ifdef DEBUG_PRINT_CODE
     if (!parser.hadError) {
-        disassembleChunk(currentChunk(), "code");
+        disassembleChunk(currentChunk(),
+                         function->name != NULL ? function->name->chars : "<script>");
     }
 #endif
+
+    return function;
 }
 
 static void beginScope(void) {
@@ -197,13 +215,17 @@ static void declaration(void);
 
 static void ternary(bool canAssign) {
     (void) canAssign;
+    int thenJump = emitJump(OP_JUMP_IF_FALSE);
+    emitByte(OP_POP);
     expression();
 
     consume(TOKEN_COLON, "Expect : after then branch of ternary operator");
-
+    int elseJump = emitJump(OP_JUMP);
+    patchJump(thenJump);
+    emitByte(OP_POP);
     expression();
-
-    printf("parsed ternary expression");
+    patchJump(elseJump);
+    printf("parsed ternary expression\n");
 }
 
 static void binary(bool canAssign) {
@@ -696,11 +718,10 @@ static void declaration() {
         synchronize();
 }
 
-bool compile(const char* source, Chunk* chunk) {
+ObjFunction* compile(const char* source) {
     initScanner(source);
     Compiler compiler;
-    initCompiler(&compiler);
-    compilingChunk = chunk;
+    initCompiler(&compiler, TYPE_SCRIPT);
     parser.hadError = false;
     parser.panicMode = false;
     advance();
@@ -709,5 +730,7 @@ bool compile(const char* source, Chunk* chunk) {
     }
     consume(TOKEN_EOF, "Expect end of expression!");
     endCompiler();
-    return !parser.hadError;
+
+    ObjFunction* function = endCompiler();
+    return parser.hadError ? NULL : function;
 }

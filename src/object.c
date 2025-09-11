@@ -14,6 +14,14 @@ static Obj* allocateObject(size_t size, ObjType type) {
     return object;
 }
 
+ObjFunction* newFunction() {
+    ObjFunction* function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
+    function->arity = 0;
+    function->name = NULL;
+    initChunk(&function->chunk);
+    return function;
+}
+
 static ObjString* allocateString(char* chars, int length, uint32_t hash) {
     ObjString* string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
     string->length = length;
@@ -32,6 +40,16 @@ static uint32_t hashString(const char* key, int length) {
     return hash;
 }
 
+ObjString* takeString(char* chars, int length) {
+    uint32_t hash = hashString(chars, length);
+    ObjString* interned = tableFindString(&vm.strings, chars, length, hash);
+    if (interned != NULL) {
+        FREE_ARRAY(char, chars, length + 1);
+        return interned;
+    }
+    return allocateString(chars, length, hash);
+}
+
 ObjString* copyString(const char* chars, int length) {
     uint32_t hash = hashString(chars, length);
     ObjString* interned = tableFindString(&vm.strings, chars, length, hash);
@@ -43,20 +61,21 @@ ObjString* copyString(const char* chars, int length) {
     return allocateString(heapChars, length, hash);
 }
 
-ObjString* takeString(char* chars, int length) {
-    uint32_t hash = hashString(chars, length);
-    ObjString* interned = tableFindString(&vm.strings, chars, length, hash);
-    if (interned != NULL) {
-        FREE_ARRAY(char, chars, length + 1);
-        return interned;
+static void printFunction(ObjFunction* function) {
+    if (function->name == NULL) {
+        printf("<script>");
+        return;
     }
-    return allocateString(chars, length, hash);
+    printf("<fn %s>", function->name->chars);
 }
 
 void printObject(Value value) {
     switch (OBJ_TYPE(value)) {
     case OBJ_STRING:
         printf("%s", AS_CSTRING(value));
+        break;
+    case OBJ_FUNCTION:
+        printFunction(AS_FUNCTION(value));
         break;
     }
 }

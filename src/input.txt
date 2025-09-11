@@ -31,3 +31,8 @@ switch(y) {
 }
 
 print "Switch are done";
+
+var z= 40>5 ? (y<5 ? 99: 1) : 5;
+
+print z;
+print "Ternary are done";

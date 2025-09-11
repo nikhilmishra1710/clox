@@ -3,6 +3,7 @@
 
 #include "chunk.h"
 #include "common.h"
+#include "object.h"
 #include "scanner.h"
 
 typedef struct {
@@ -12,6 +13,6 @@ typedef struct {
     bool panicMode;
 } Parser;
 
-bool compile(const char* source, Chunk* chunk);
+ObjFunction* compile(const char* source);
 
 #endif

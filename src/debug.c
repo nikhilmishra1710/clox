@@ -1,4 +1,5 @@
 #include "include/debug.h"
+#include "include/chunk.h"
 #include "include/value.h"
 
 void disassembleChunk(Chunk* chunk, const char* name) {
@@ -98,6 +99,10 @@ int disassembleInstruction(Chunk* chunk, int offset) {
         return jumpInstruction("OP_JUMP", 1, chunk, offset);
     case OP_JUMP_IF_FALSE:
         return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset);
+    case OP_STORE_SWITCH:
+        return simpleInstruction("OP_STORE_SWITCH", offset);
+    case OP_COMPARE_SWITCH:
+        return simpleInstruction("OP_COMPARE_SWITCH", offset);
     case OP_LOOP:
         return jumpInstruction("OP_LOOP", -1, chunk, offset);
     case OP_PRINT:
