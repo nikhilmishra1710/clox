@@ -36,3 +36,17 @@ var z= 40>5 ? (y<5 ? 99: 1) : 5;
 
 print z;
 print "Ternary are done";
+
+fun areWeHavingItYet() {
+  print "Yes we are!";
+}
+
+print areWeHavingItYet;
+
+fun a() { return b(); }
+fun b() { return c(); }
+fun c() {
+  return "value";
+}
+
+print a();

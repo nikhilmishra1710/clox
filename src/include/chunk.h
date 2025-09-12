@@ -31,6 +31,7 @@ typedef enum {
     OP_LOOP,
     OP_STORE_SWITCH,
     OP_COMPARE_SWITCH,
+    OP_CALL,
     OP_RETURN
 } OpCode;
 
