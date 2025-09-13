@@ -4,6 +4,7 @@
 #include "include/debug.h"
 #include "include/memory.h"
 #include "include/object.h"
+#include "include/nativeFunction.h"
 
 VM vm;
 
@@ -24,6 +25,7 @@ static char* getType(Value value) {
         case OBJ_STRING:
             return "string";
         // add more as needed
+        case OBJ_NATIVE:
         case OBJ_FUNCTION:
             return "function";
         }
@@ -52,11 +54,21 @@ static void runtimeError(const char* format, ...) {
     resetStack();
 }
 
+static void defineNative(const char* name, NativeFn function, int arity) {
+    push(OBJ_VAL(copyString(name, (int) strlen(name))));
+    push(OBJ_VAL(newNative(function, arity)));
+    tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
+    pop();
+    pop();
+}
+
 void initVM(void) {
     resetStack();
     vm.objects = NULL;
     initTable(&vm.globals);
     initTable(&vm.strings);
+
+    defineNative("clock", clockNative, 0);
 }
 
 void freeVM(void) {
@@ -98,8 +110,24 @@ static bool call(ObjFunction* function, int argCount) {
 static bool callValue(Value callee, int argCount) {
     if (IS_OBJ(callee)) {
         switch (OBJ_TYPE(callee)) {
-        case OBJ_FUNCTION:
+        case OBJ_FUNCTION: {
             return call(AS_FUNCTION(callee), argCount);
+        }
+        case OBJ_NATIVE: {
+            ObjNative* native = AS_NATIVE(callee);
+            if (native->arity != argCount) {
+                runtimeError("Expected %d arguments but got %d.", native->arity, argCount);
+                return false;
+            }
+            Value result;
+            bool error = native->function(argCount, vm.stackTop - argCount, &result);
+            if (error) {
+                return !error;
+            }
+            vm.stackTop -= argCount + 1;
+            push(result);
+            return true;
+        }
         default:
             break; // Non-callable object type.
         }

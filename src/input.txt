@@ -50,3 +50,7 @@ fun c() {
 }
 
 print a();
+
+var time = clock();
+
+print time;
