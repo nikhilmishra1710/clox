@@ -54,3 +54,18 @@ print a();
 var time = clock();
 
 print time;
+
+fun makeClosure(value) {
+    fun printer() {
+        print value;
+    }
+    return printer;
+}
+
+var p1 = makeClosure("Printer 1");
+var p2 = makeClosure("Printer 2");
+
+p1();
+p2();
+
+print "Closures are done";
