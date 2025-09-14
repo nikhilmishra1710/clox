@@ -61,3 +61,4 @@ obj/
 coverage-report/
 tests/outputs/
 src/output.txt
+src/error.txt
