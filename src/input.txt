@@ -69,3 +69,38 @@ p1();
 p2();
 
 print "Closures are done";
+
+class Klass {}
+print Klass;
+print Klass();
+
+class Scone {
+  topping(first, second) {
+    print "scone with " + first + " and " + second;
+  }
+}
+
+var scone = Scone();
+scone.topping("berries", "cream");
+
+print "basic classes are done";
+
+class Coffee {
+    init(value) {
+        this.coffee = value;
+    }
+
+    getCoffee() {
+        if (this.coffee) {
+            print "Your coffee " + this.coffee + " is ready";
+            this.coffee = nil;
+        } else {
+            print "No more grounds";
+        }
+    }
+}
+
+var maker = Coffee("Black");
+maker.getCoffee();
+
+print "Some more classes feature done";

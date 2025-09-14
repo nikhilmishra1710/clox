@@ -2,6 +2,7 @@
 #include "include/memory.h"
 #include "include/object.h" // IWYU pragma: keep
 #include "include/value.h"
+#include "include/vm.h"
 
 #define TABLE_MAX_LOAD 0.75
 
@@ -156,4 +157,26 @@ bool tableDelete(Table* table, ObjString* key) {
     entry->key = NULL;
     entry->value = BOOL_VAL(true);
     return true;
+}
+
+void printTable(const char* name, Table* table) {
+    printf("=== TABLE DUMP %s (count=%d, capacity=%d) ===\n", name, table->count, table->capacity);
+
+    for (int i = 0; i < table->capacity; i++) {
+        Entry* entry = &table->entries[i];
+        if (entry->key == NULL) {
+            continue; // empty bucket
+        }
+
+        // print key
+        printf("[%d] key='%.*s' -> ", i, entry->key->length, entry->key->chars);
+        printf("   key ptr=%p vm.initString=%p equal? %s\n", (void*) entry->key,
+               (void*) vm.initString, (entry->key == vm.initString ? "YES" : "NO"));
+
+        // print value (reuse existing value printer)
+        printValue(entry->value);
+        printf("\n");
+    }
+
+    printf("=== END TABLE DUMP ===\n");
 }

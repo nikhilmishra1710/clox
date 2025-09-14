@@ -24,5 +24,6 @@ void markTable(Table* table);
 bool tableDelete(Table* table, ObjString* key);
 bool tableGet(Table* table, ObjString* key, Value* value);
 bool tableSet(Table* table, ObjString* key, Value value);
+void printTable(const char* name, Table* table);
 
 #endif

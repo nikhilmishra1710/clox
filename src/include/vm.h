@@ -32,6 +32,7 @@ typedef struct {
     int grayCount;
     int grayCapacity;
     Obj** grayStack;
+    ObjString* initString;
 } VM;
 
 extern VM vm;
