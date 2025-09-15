@@ -36,6 +36,7 @@ typedef enum {
     OP_STORE_SWITCH,
     OP_COMPARE_SWITCH,
     OP_CALL,
+    OP_INVOKE,
     OP_CLOSURE,
     OP_CLOSE_UPVALUE,
     OP_RETURN,

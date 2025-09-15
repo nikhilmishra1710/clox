@@ -104,3 +104,16 @@ var maker = Coffee("Black");
 maker.getCoffee();
 
 print "Some more classes feature done";
+
+class Oops {
+    init() {
+        fun f() {
+            print "Something";
+        }
+
+        this.field = f;
+    }
+}
+
+var oops = Oops();
+oops.field();
