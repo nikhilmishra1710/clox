@@ -13,9 +13,9 @@ void initChunk(Chunk* chunk) {
 }
 
 void freeChunk(Chunk* chunk) {
-    freeValueArray(&chunk->constants);
     FREE_ARRAY(LineInfo, chunk->lines, chunk->lineCapacity);
     FREE_ARRAY(uint8_t, chunk->code, chunk->capacity);
+    freeValueArray(&chunk->constants);
     initChunk(chunk);
 }
 

@@ -1,119 +1,31 @@
-var a = "byee";
-if (5>3){
-    var a = "hello";
-    print a;
-}
-print a;
-print "Blocks are done";
-
-var i=0;
-while (i < 5) {
-    i = i + 1;
-    print i;
-}
-
-print "While loop are done";
-
-for(var x=0; x<5; x=x+1) {
-    print x;
-}
-
-print "For loop are done";
-
-var y=4;
-switch(y) {
-    case 1:
-        print "switch val 1";
-    case 4:
-        print "switch val 4";
-    default:
-        print "No default val";
-}
-
-print "Switch are done";
-
-var z= 40>5 ? (y<5 ? 99: 1) : 5;
-
-print z;
-print "Ternary are done";
-
-fun areWeHavingItYet() {
-  print "Yes we are!";
-}
-
-print areWeHavingItYet;
-
-fun a() { return b(); }
-fun b() { return c(); }
-fun c() {
-  return "value";
-}
-
-print a();
-
-var time = clock();
-
-print time;
-
-fun makeClosure(value) {
-    fun printer() {
-        print value;
-    }
-    return printer;
-}
-
-var p1 = makeClosure("Printer 1");
-var p2 = makeClosure("Printer 2");
-
-p1();
-p2();
-
-print "Closures are done";
-
-class Klass {}
-print Klass;
-print Klass();
-
-class Scone {
-  topping(first, second) {
-    print "scone with " + first + " and " + second;
+class Zoo {
+  init() {
+    this.aardvark = 1;
+    this.baboon   = 1;
+    this.cat      = 1;
+    this.donkey   = 1;
+    this.elephant = 1;
+    this.fox      = 1;
   }
+  ant()    { return this.aardvark; }
+  banana() { return this.baboon; }
+  tuna()   { return this.cat; }
+  hay()    { return this.donkey; }
+  grass()  { return this.elephant; }
+  mouse()  { return this.fox; }
 }
 
-var scone = Scone();
-scone.topping("berries", "cream");
-
-print "basic classes are done";
-
-class Coffee {
-    init(value) {
-        this.coffee = value;
-    }
-
-    getCoffee() {
-        if (this.coffee) {
-            print "Your coffee " + this.coffee + " is ready";
-            this.coffee = nil;
-        } else {
-            print "No more grounds";
-        }
-    }
+var zoo = Zoo();
+var sum = 0;
+var start = clock();
+while (sum < 100000000) {
+  sum = sum + zoo.ant()
+            + zoo.banana()
+            + zoo.tuna()
+            + zoo.hay()
+            + zoo.grass()
+            + zoo.mouse();
 }
 
-var maker = Coffee("Black");
-maker.getCoffee();
-
-print "Some more classes feature done";
-
-class Oops {
-    init() {
-        fun f() {
-            print "Something";
-        }
-
-        this.field = f;
-    }
-}
-
-var oops = Oops();
-oops.field();
+print clock() - start;
+print sum;

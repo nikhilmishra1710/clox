@@ -17,6 +17,9 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
 #ifdef DEBUG_STRESS_GC
         collectGarbage();
 #endif
+        if (vm.bytesAllocated > vm.nextGC) {
+            collectGarbage();
+        }
     }
     if (newSize == 0) {
         free(pointer);
@@ -27,9 +30,6 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
     if (result == NULL)
         exit(1);
 
-    if (vm.bytesAllocated > vm.nextGC) {
-        collectGarbage();
-    }
     return result;
 }
 
@@ -66,84 +66,6 @@ static void markArray(ValueArray* array) {
     }
 }
 
-static void freeObject(Obj* object) {
-#ifdef DEBUG_LOG_GC
-    printf("%p free type %d\n", (void*) object, object->type);
-#endif
-    switch (object->type) {
-    case OBJ_BOUND_METHOD: {
-        FREE(ObjBoundMethod, object);
-        break;
-    }
-    case OBJ_CLASS: {
-        ObjClass* klass = (ObjClass*) object;
-        freeTable(&klass->methods);
-        FREE(ObjClass, object);
-        break;
-    }
-    case OBJ_STRING: {
-        ObjString* string = (ObjString*) object;
-        FREE_ARRAY(char, string->chars, string->length + 1);
-        FREE(ObjString, object);
-        break;
-    }
-    case OBJ_FUNCTION: {
-        ObjFunction* function = (ObjFunction*) object;
-        freeChunk(&function->chunk);
-        FREE(ObjFunction, object);
-        break;
-    }
-    case OBJ_INSTANCE: {
-        ObjInstance* instance = (ObjInstance*) object;
-        freeTable(&instance->fields);
-        FREE(ObjInstance, object);
-        break;
-    }
-    case OBJ_NATIVE: {
-        FREE(ObjNative, object);
-        break;
-    }
-    case OBJ_CLOSURE: {
-        ObjClosure* closure = (ObjClosure*) object;
-        FREE_ARRAY(ObjUpvalue*, closure->upvalues, closure->upvalueCount);
-        FREE(ObjClosure, object);
-        break;
-    }
-    case OBJ_UPVALUE: {
-        FREE(ObjUpvalue, object);
-        break;
-    }
-    }
-}
-
-void freeObjects() {
-    Obj* object = vm.objects;
-    while (object != NULL) {
-        Obj* next = object->next;
-        freeObject(object);
-        object = next;
-    }
-    free(vm.grayStack);
-}
-
-static void markRoots(void) {
-    for (Value* slot = vm.stack; slot < vm.stackTop; slot++) {
-        markValue(*slot);
-    }
-
-    for (int i = 0; i < vm.frameCount; i++) {
-        markObject((Obj*) vm.frames[i].closure);
-    }
-
-    for (ObjUpvalue* upvalue = vm.openUpvalues; upvalue != NULL; upvalue = upvalue->next) {
-        markObject((Obj*) upvalue);
-    }
-
-    markTable(&vm.globals);
-    markCompilerRoots();
-    markObject((Obj*) vm.initString);
-}
-
 static void blackenObject(Obj* object) {
 #ifdef DEBUG_LOG_GC
     printf("%p blacken ", (void*) object);
@@ -177,20 +99,88 @@ static void blackenObject(Obj* object) {
         markArray(&function->chunk.constants);
         break;
     }
-    case OBJ_UPVALUE: {
-        markValue(((ObjUpvalue*) object)->closed);
-        break;
-    }
     case OBJ_INSTANCE: {
         ObjInstance* instance = (ObjInstance*) object;
         markObject((Obj*) instance->klass);
         markTable(&instance->fields);
         break;
     }
+    case OBJ_UPVALUE: {
+        markValue(((ObjUpvalue*) object)->closed);
+        break;
+    }
     case OBJ_NATIVE:
     case OBJ_STRING:
         break;
     }
+}
+
+static void freeObject(Obj* object) {
+#ifdef DEBUG_LOG_GC
+    printf("%p free type %d\n", (void*) object, object->type);
+#endif
+    switch (object->type) {
+    case OBJ_BOUND_METHOD: {
+        FREE(ObjBoundMethod, object);
+        break;
+    }
+    case OBJ_CLASS: {
+        ObjClass* klass = (ObjClass*) object;
+        freeTable(&klass->methods);
+        FREE(ObjClass, object);
+        break;
+    }
+    case OBJ_CLOSURE: {
+        ObjClosure* closure = (ObjClosure*) object;
+        FREE_ARRAY(ObjUpvalue*, closure->upvalues, closure->upvalueCount);
+        FREE(ObjClosure, object);
+        break;
+    }
+    case OBJ_FUNCTION: {
+        ObjFunction* function = (ObjFunction*) object;
+        freeChunk(&function->chunk);
+        FREE(ObjFunction, object);
+        break;
+    }
+    case OBJ_INSTANCE: {
+        ObjInstance* instance = (ObjInstance*) object;
+        freeTable(&instance->fields);
+        FREE(ObjInstance, object);
+        break;
+    }
+    case OBJ_NATIVE: {
+        FREE(ObjNative, object);
+        break;
+    }
+    case OBJ_STRING: {
+        ObjString* string = (ObjString*) object;
+        FREE_ARRAY(char, string->chars, string->length + 1);
+        FREE(ObjString, object);
+        break;
+    }
+    case OBJ_UPVALUE: {
+        FREE(ObjUpvalue, object);
+        break;
+    }
+    }
+}
+
+static void markRoots(void) {
+    for (Value* slot = vm.stack; slot < vm.stackTop; slot++) {
+        markValue(*slot);
+    }
+
+    for (int i = 0; i < vm.frameCount; i++) {
+        markObject((Obj*) vm.frames[i].closure);
+    }
+
+    for (ObjUpvalue* upvalue = vm.openUpvalues; upvalue != NULL; upvalue = upvalue->next) {
+        markObject((Obj*) upvalue);
+    }
+
+    markTable(&vm.globals);
+    markCompilerRoots();
+    markObject((Obj*) vm.initString);
 }
 
 static void traceReference(void) {
@@ -238,4 +228,14 @@ void collectGarbage() {
     printf("   collected %zu bytes (from %zu to %zu) next at %zu\n", before - vm.bytesAllocated,
            before, vm.bytesAllocated, vm.nextGC);
 #endif
+}
+
+void freeObjects() {
+    Obj* object = vm.objects;
+    while (object != NULL) {
+        Obj* next = object->next;
+        freeObject(object);
+        object = next;
+    }
+    free(vm.grayStack);
 }

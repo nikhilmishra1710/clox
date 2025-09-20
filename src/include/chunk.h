@@ -37,11 +37,14 @@ typedef enum {
     OP_COMPARE_SWITCH,
     OP_CALL,
     OP_INVOKE,
+    OP_SUPER_INVOKE,
     OP_CLOSURE,
     OP_CLOSE_UPVALUE,
     OP_RETURN,
     OP_CLASS,
-    OP_METHOD
+    OP_METHOD,
+    OP_INHERIT,
+    OP_GET_SUPER
 } OpCode;
 
 typedef struct {

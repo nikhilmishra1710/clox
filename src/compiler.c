@@ -58,12 +58,12 @@ typedef struct Compiler {
 
 typedef struct ClassCompiler {
     struct ClassCompiler* enclosing;
+    bool hasSuperclass;
 } ClassCompiler;
 
 Parser parser;
 Compiler* current = NULL;
 ClassCompiler* currentClass = NULL;
-Chunk* compilingChunk;
 
 static Chunk* currentChunk(void) {
     return &(current->function->chunk);
@@ -146,6 +146,14 @@ static void emitLoop(int loopStart) {
     emitByte((uint8_t) (offset & 0xff));
 }
 
+static int emitJump(uint8_t instruction) {
+    emitByte(instruction);
+    emitByte(0xff);
+    emitByte(0xff);
+
+    return currentChunk()->count - 2;
+}
+
 static void emitReturn(void) {
     if (current->type == TYPE_INITIALIZER) {
         emitBytes(OP_GET_LOCAL, 0);
@@ -178,14 +186,6 @@ static void patchJump(int offset) {
 
     currentChunk()->code[offset] = (uint8_t) ((jump >> 8) & 0xff);
     currentChunk()->code[offset + 1] = (uint8_t) (jump & 0xff);
-}
-
-static int emitJump(uint8_t instruction) {
-    emitByte(instruction);
-    emitByte(0xff);
-    emitByte(0xff);
-
-    return currentChunk()->count - 2;
 }
 
 static void initCompiler(Compiler* compiler, FunctionType type) {
@@ -242,164 +242,14 @@ static void endScope(void) {
     }
 }
 
-static uint8_t identifierConstant(Token* name) {
-    return makeConstant(OBJ_VAL(copyString(name->start, name->length)));
-}
-
 static void expression(void);
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(Precedence precedence);
 static void statement(void);
 static void declaration(void);
 
-static void ternary(bool canAssign) {
-    (void) canAssign;
-    int thenJump = emitJump(OP_JUMP_IF_FALSE);
-    emitByte(OP_POP);
-    expression();
-
-    consume(TOKEN_COLON, "Expect : after then branch of ternary operator");
-    int elseJump = emitJump(OP_JUMP);
-    patchJump(thenJump);
-    emitByte(OP_POP);
-    expression();
-    patchJump(elseJump);
-    printf("parsed ternary expression\n");
-}
-
-static void binary(bool canAssign) {
-    (void) canAssign;
-    TokenType operatorType = parser.previous.type;
-    ParseRule* rule = getRule(operatorType);
-    parsePrecedence((Precedence) (rule->precedence + 1));
-
-    switch (operatorType) {
-    case TOKEN_EQUAL_EQUAL:
-        emitByte(OP_EQUAL);
-        break;
-    case TOKEN_BANG_EQUAL:
-        emitBytes(OP_EQUAL, OP_NOT);
-        break;
-    case TOKEN_GREATER:
-        emitByte(OP_GREATER);
-        break;
-    case TOKEN_GREATER_EQUAL:
-        emitBytes(OP_LESS, OP_NOT);
-        break;
-    case TOKEN_LESS:
-        emitByte(OP_LESS);
-        break;
-    case TOKEN_LESS_EQUAL:
-        emitBytes(OP_GREATER, OP_NOT);
-        break;
-    case TOKEN_PLUS:
-        emitByte(OP_ADD);
-        break;
-    case TOKEN_MINUS:
-        emitByte(OP_SUBTRACT);
-        break;
-    case TOKEN_STAR:
-        emitByte(OP_MULTIPLY);
-        break;
-    case TOKEN_SLASH:
-        emitByte(OP_DIVIDE);
-        break;
-    default:
-        return; // Unreachable.
-    }
-}
-
-static uint8_t argumentList(void) {
-    uint8_t argCount = 0;
-    if (!check(TOKEN_RIGHT_PAREN)) {
-        do {
-            expression();
-            if (argCount == 255) {
-                error("Can't have more than 255 arguments.");
-            }
-            argCount++;
-        } while (match(TOKEN_COMMA));
-    }
-    consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
-    return argCount;
-}
-
-static void call(bool canAssign) {
-    (void) canAssign;
-    uint8_t argCount = argumentList();
-    emitBytes(OP_CALL, argCount);
-}
-
-static void dot(bool canAssign) {
-    consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
-    uint8_t name = identifierConstant(&parser.previous);
-
-    if (canAssign && match(TOKEN_EQUAL)) {
-        expression();
-        emitBytes(OP_SET_PROPERTY, name);
-    } else if (match(TOKEN_LEFT_PAREN)) {
-        uint8_t argCount = argumentList();
-        emitBytes(OP_INVOKE, name);
-        emitByte(argCount);
-    } else {
-        emitBytes(OP_GET_PROPERTY, name);
-    }
-}
-
-static void literal(bool canAssign) {
-    (void) canAssign;
-    switch (parser.previous.type) {
-    case TOKEN_TRUE:
-        emitByte(OP_TRUE);
-        break;
-    case TOKEN_FALSE:
-        emitByte(OP_FALSE);
-        break;
-    case TOKEN_NIL:
-        emitByte(OP_NIL);
-        break;
-    default:
-        break;
-    }
-}
-
-static void grouping(bool canAssign) {
-    (void) canAssign;
-    expression();
-    consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
-}
-
-static void number(bool canAssign) {
-    (void) canAssign;
-    double value = strtod(parser.previous.start, NULL);
-    emitConstant(NUMBER_VAL(value));
-}
-
-static void string(bool canAssign) {
-    (void) canAssign;
-    emitConstant(OBJ_VAL(copyString(parser.previous.start + 1, parser.previous.length - 2)));
-}
-
-static void or_(bool canAssign) {
-    (void) canAssign;
-    int elseJump = emitJump(OP_JUMP_IF_FALSE);
-    int endJump = emitJump(OP_JUMP);
-
-    patchJump(elseJump);
-    emitByte(OP_POP);
-
-    parsePrecedence(PREC_OR);
-    patchJump(endJump);
-}
-
-static void and_(bool canAssign) {
-    (void) canAssign;
-    int endJump = emitJump(OP_JUMP_IF_FALSE);
-
-    emitByte(OP_POP);
-    parsePrecedence(PREC_AND);
-
-    patchJump(endJump);
+static uint8_t identifierConstant(Token* name) {
+    return makeConstant(OBJ_VAL(copyString(name->start, name->length)));
 }
 
 static bool identifiersEqual(Token* a, Token* b) {
@@ -486,6 +336,180 @@ static void declareVariable(void) {
     addLocal(*name);
 }
 
+static uint8_t parseVariable(const char* errorMessage) {
+    consume(TOKEN_IDENTIFIER, errorMessage);
+
+    declareVariable();
+    if (current->scopeDepth > 0)
+        return 0;
+
+    return identifierConstant(&parser.previous);
+}
+
+static void markInitialized(void) {
+    if (current->scopeDepth == 0)
+        return;
+    current->locals[current->localCount - 1].depth = current->scopeDepth;
+}
+
+static void defineVariable(uint8_t global) {
+    if (current->scopeDepth > 0) {
+        markInitialized();
+        return;
+    }
+    emitBytes(OP_DEFINE_GLOBAL, global);
+}
+
+static uint8_t argumentList(void) {
+    uint8_t argCount = 0;
+    if (!check(TOKEN_RIGHT_PAREN)) {
+        do {
+            expression();
+            if (argCount == 255) {
+                error("Can't have more than 255 arguments.");
+            }
+            argCount++;
+        } while (match(TOKEN_COMMA));
+    }
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
+    return argCount;
+}
+
+static void and_(bool canAssign) {
+    (void) canAssign;
+    int endJump = emitJump(OP_JUMP_IF_FALSE);
+
+    emitByte(OP_POP);
+    parsePrecedence(PREC_AND);
+
+    patchJump(endJump);
+}
+
+static void ternary(bool canAssign) {
+    (void) canAssign;
+    int thenJump = emitJump(OP_JUMP_IF_FALSE);
+    emitByte(OP_POP);
+    expression();
+
+    consume(TOKEN_COLON, "Expect : after then branch of ternary operator");
+    int elseJump = emitJump(OP_JUMP);
+    patchJump(thenJump);
+    emitByte(OP_POP);
+    expression();
+    patchJump(elseJump);
+    printf("parsed ternary expression\n");
+}
+
+static void binary(bool canAssign) {
+    (void) canAssign;
+    TokenType operatorType = parser.previous.type;
+    ParseRule* rule = getRule(operatorType);
+    parsePrecedence((Precedence) (rule->precedence + 1));
+
+    switch (operatorType) {
+    case TOKEN_EQUAL_EQUAL:
+        emitByte(OP_EQUAL);
+        break;
+    case TOKEN_BANG_EQUAL:
+        emitBytes(OP_EQUAL, OP_NOT);
+        break;
+    case TOKEN_GREATER:
+        emitByte(OP_GREATER);
+        break;
+    case TOKEN_GREATER_EQUAL:
+        emitBytes(OP_LESS, OP_NOT);
+        break;
+    case TOKEN_LESS:
+        emitByte(OP_LESS);
+        break;
+    case TOKEN_LESS_EQUAL:
+        emitBytes(OP_GREATER, OP_NOT);
+        break;
+    case TOKEN_PLUS:
+        emitByte(OP_ADD);
+        break;
+    case TOKEN_MINUS:
+        emitByte(OP_SUBTRACT);
+        break;
+    case TOKEN_STAR:
+        emitByte(OP_MULTIPLY);
+        break;
+    case TOKEN_SLASH:
+        emitByte(OP_DIVIDE);
+        break;
+    default:
+        return; // Unreachable.
+    }
+}
+
+static void call(bool canAssign) {
+    (void) canAssign;
+    uint8_t argCount = argumentList();
+    emitBytes(OP_CALL, argCount);
+}
+
+static void dot(bool canAssign) {
+    consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
+    uint8_t name = identifierConstant(&parser.previous);
+
+    if (canAssign && match(TOKEN_EQUAL)) {
+        expression();
+        emitBytes(OP_SET_PROPERTY, name);
+    } else if (match(TOKEN_LEFT_PAREN)) {
+        uint8_t argCount = argumentList();
+        emitBytes(OP_INVOKE, name);
+        emitByte(argCount);
+    } else {
+        emitBytes(OP_GET_PROPERTY, name);
+    }
+}
+
+static void literal(bool canAssign) {
+    (void) canAssign;
+    switch (parser.previous.type) {
+    case TOKEN_TRUE:
+        emitByte(OP_TRUE);
+        break;
+    case TOKEN_FALSE:
+        emitByte(OP_FALSE);
+        break;
+    case TOKEN_NIL:
+        emitByte(OP_NIL);
+        break;
+    default:
+        break;
+    }
+}
+
+static void grouping(bool canAssign) {
+    (void) canAssign;
+    expression();
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
+}
+
+static void number(bool canAssign) {
+    (void) canAssign;
+    double value = strtod(parser.previous.start, NULL);
+    emitConstant(NUMBER_VAL(value));
+}
+
+static void or_(bool canAssign) {
+    (void) canAssign;
+    int elseJump = emitJump(OP_JUMP_IF_FALSE);
+    int endJump = emitJump(OP_JUMP);
+
+    patchJump(elseJump);
+    emitByte(OP_POP);
+
+    parsePrecedence(PREC_OR);
+    patchJump(endJump);
+}
+
+static void string(bool canAssign) {
+    (void) canAssign;
+    emitConstant(OBJ_VAL(copyString(parser.previous.start + 1, parser.previous.length - 2)));
+}
+
 static void namedVariable(Token name, bool canAssign) {
     uint8_t getOp, setOp;
     int arg = resolveLocal(current, &name);
@@ -511,6 +535,36 @@ static void namedVariable(Token name, bool canAssign) {
 
 static void variable(bool canAssign) {
     namedVariable(parser.previous, canAssign);
+}
+
+static Token syntheticToken(const char* text) {
+    Token token;
+    token.start = text;
+    token.length = (int) strlen(text);
+    return token;
+}
+
+static void super_(bool canAssign) {
+    (void) canAssign;
+    if (currentClass == NULL) {
+        error("Can't use 'super' outside of a class.");
+    } else if (!currentClass->hasSuperclass) {
+        error("Can't use 'super' in a class with no superclass.");
+    }
+    consume(TOKEN_DOT, "Expect '.' after 'super'.");
+    consume(TOKEN_IDENTIFIER, "Expect superclass method name.");
+    uint8_t name = identifierConstant(&parser.previous);
+
+    namedVariable(syntheticToken("this"), false);
+    if (match(TOKEN_LEFT_PAREN)) {
+        uint8_t argCount = argumentList();
+        namedVariable(syntheticToken("super"), false);
+        emitBytes(OP_SUPER_INVOKE, name);
+        emitByte(argCount);
+    } else {
+        namedVariable(syntheticToken("super"), false);
+        emitBytes(OP_GET_SUPER, name);
+    }
 }
 
 static void this_(bool canAssign) {
@@ -575,7 +629,7 @@ ParseRule rules[] = {
     [TOKEN_OR] = {NULL, or_, PREC_OR},
     [TOKEN_PRINT] = {NULL, NULL, PREC_NONE},
     [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
-    [TOKEN_SUPER] = {NULL, NULL, PREC_NONE},
+    [TOKEN_SUPER] = {super_, NULL, PREC_NONE},
     [TOKEN_THIS] = {this_, NULL, PREC_NONE},
     [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
     [TOKEN_VAR] = {NULL, NULL, PREC_NONE},
@@ -604,30 +658,6 @@ static void parsePrecedence(Precedence precedence) {
     if (canAssign && match(TOKEN_EQUAL)) {
         error("Invalid assignment target.");
     }
-}
-
-static uint8_t parseVariable(const char* errorMessage) {
-    consume(TOKEN_IDENTIFIER, errorMessage);
-
-    declareVariable();
-    if (current->scopeDepth > 0)
-        return 0;
-
-    return identifierConstant(&parser.previous);
-}
-
-static void markInitialized(void) {
-    if (current->scopeDepth == 0)
-        return;
-    current->locals[current->localCount - 1].depth = current->scopeDepth;
-}
-
-static void defineVariable(uint8_t global) {
-    if (current->scopeDepth > 0) {
-        markInitialized();
-        return;
-    }
-    emitBytes(OP_DEFINE_GLOBAL, global);
 }
 
 static ParseRule* getRule(TokenType type) {
@@ -695,8 +725,22 @@ static void classDeclaration(void) {
     emitBytes(OP_CLASS, nameConstant);
     defineVariable(nameConstant);
     ClassCompiler classCompiler;
+    classCompiler.hasSuperclass = false;
     classCompiler.enclosing = currentClass;
     currentClass = &classCompiler;
+    if (match(TOKEN_LESS)) {
+        consume(TOKEN_IDENTIFIER, "Expect superclass name.");
+        variable(false);
+        if (identifiersEqual(&className, &parser.previous)) {
+            error("A class can't inherit from itself.");
+        }
+        beginScope();
+        addLocal(syntheticToken("super"));
+        defineVariable(0);
+        namedVariable(className, false);
+        emitByte(OP_INHERIT);
+        classCompiler.hasSuperclass = true;
+    }
     namedVariable(className, false);
     consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
     while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
@@ -704,6 +748,9 @@ static void classDeclaration(void) {
     }
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
     emitByte(OP_POP);
+    if (classCompiler.hasSuperclass) {
+        endScope();
+    }
     currentClass = currentClass->enclosing;
 }
 
