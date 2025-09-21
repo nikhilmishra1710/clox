@@ -9,6 +9,8 @@ INC_DIR := src/include
 TEST_DIR := tests
 COVERAGE_DIR := coverage-report
 
+TEST_TARGET := bin/test/clox
+
 CC := gcc
 LD := $(CC)
 AR := ar
@@ -26,28 +28,37 @@ LDLIBS := -lm
 COVERAGE_FLAGS := --coverage
 
 OPTIMIZATION := -O2
-DEBUG_FLAGS := -g -DDEBUG
+DEBUG_FLAGS := -DDEBUG
 RELEASE_FLAGS := -DNDEBUG -UDEBUG
 
 BUILD_TYPE ?= debug
 
 ifeq ($(BUILD_TYPE),debug)
-    CFLAGS += $(DEBUG_FLAGS) -O0
+    CFLAGS += -g $(DEBUG_FLAGS) -O0
     BUILD_DIR := $(OBJ_DIR)/debug
+	TARGET := $(BIN_DIR)/debug/$(PROJECT_NAME)
+	BIN_DIR := $(BIN_DIR)/debug
 else ifeq ($(BUILD_TYPE),release)
     CFLAGS += $(RELEASE_FLAGS) $(OPTIMIZATION)
     BUILD_DIR := $(OBJ_DIR)/release
-else ifeq ($(BUILD_TYPE),coverage)
-    CFLAGS += $(DEBUG_FLAGS) -O0 $(COVERAGE_FLAGS)
+	TARGET := $(BIN_DIR)/release/$(PROJECT_NAME)
+	BIN_DIR := $(BIN_DIR)/release
+else ifeq ($(BUILD_TYPE),test)
+	CFLAGS += -g -O0
+    BUILD_DIR := $(OBJ_DIR)/test
+	TARGET := $(BIN_DIR)/test/$(PROJECT_NAME)
+	BIN_DIR := $(BIN_DIR)/test
+else ifeq ($(BUILD_TYPE),coverage) 
+    CFLAGS += -g -O0 $(COVERAGE_FLAGS)
     LDFLAGS += $(COVERAGE_FLAGS)
     BUILD_DIR := $(OBJ_DIR)/coverage
+	TARGET := $(BIN_DIR)/coverage/$(PROJECT_NAME)
+	BIN_DIR := $(BIN_DIR)/coverage
 endif
 
 SRCS := $(shell find $(SRC_DIR) -name '*.c')
 OBJS := $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
-
-TARGET := $(BIN_DIR)/$(PROJECT_NAME)
 
 STATIC_LIB := $(LIB_DIR)/lib$(PROJECT_NAME).a
 
@@ -110,7 +121,7 @@ coverage: clean
 	@echo "Building testing executable"
 	$(MAKE) BUILD_TYPE=coverage
 	@echo "Testing build completed"
-	tests/tester.sh $(TARGET) $(TEST_DIR)
+	./tester.sh $(TARGET) $(TEST_DIR)
 	@echo "Collecting coverage data..."
 	mkdir -p $(COVERAGE_DIR)
 	lcov --capture --directory . --output-file $(COVERAGE_DIR)/coverage.info
@@ -119,9 +130,15 @@ coverage: clean
 	@echo "Coverage report generated at $(COVERAGE_DIR)/index.html"
 
 .PHONY: test
-test: $(TARGET)
+test:
+	$(MAKE) BUILD_TYPE=test
 	@echo "Running tests..."
-	tests/tester.sh $(TARGET) $(TEST_DIR)
+	./tester.sh $(TEST_TARGET) $(TEST_DIR)
+
+.PHONY: release
+release:
+	$(MAKE) BUILD_TYPE=release
+	@echo "Release version built"
 
 .PHONY: help
 help:

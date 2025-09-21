@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BIN=bin/clox
+BIN=$1
 
 if [ -t 1 ] && command -v tput >/dev/null; then
     RED=$(tput setaf 1)
@@ -65,7 +65,8 @@ run_hooks() {
 compare_files() {
     local expected_file=$1
     local actual_file=$2
-
+    local expected_eof=false
+    local actual_eof=false
     exec 3<"$expected_file"
     exec 4<"$actual_file"
 
@@ -209,7 +210,14 @@ do
             expected_out="$EXPECTED_DIR/$relative_expected_out"
         elif [ $(yq -r '.expected_stdout.type' "$test_spec_file") == "inline" ]; then
             expected_out="$TMP_DIR/${filename}.expected.out"
-            yq -r '.expected_stdout.inline | if type=="string" then . else .[] end' "$test_spec_file" > $expected_out
+            yq -r '
+            .expected_stdout.inline
+            | if . == null then empty
+                elif type == "string" then .
+                elif type == "array" then join("\n")
+                else .
+                end
+            ' "$test_spec_file" > $expected_out
         else
             echo "[${YELLOW}WARN${RESET}] Unknown expected_stdout type for $filename"
             ok=0
@@ -233,7 +241,15 @@ do
             expected_err="$EXPECTED_DIR/$relative_expected_err"
         elif [ $(yq -r '.expected_stderr.type' "$test_spec_file") == "inline" ]; then
             expected_err="$TMP_DIR/${filename}.expected.err"
-            yq -r '.expected_stderr.inline | if type=="string" then . else .[] end' "$test_spec_file" > $expected_err
+            yq -r '
+            .expected_stderr.inline
+            | if . == null then empty
+                elif type == "string" then .
+                elif type == "array" then join("\n")
+                else .
+                end
+            ' "$test_spec_file" > "$expected_err"
+
         else
             echo "[${YELLOW}WARN${RESET}] Unknown expected_stderr type for $filename"
             ok=0
