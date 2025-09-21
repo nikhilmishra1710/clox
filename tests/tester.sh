@@ -2,15 +2,6 @@
 set -euo pipefail
 
 BIN=bin/clox
-INPUT_DIR=tests/specs
-EXPECTED_DIR=tests/expected
-OUTPUT_DIR=tests/outputs
-TMP_DIR=tests/tmp
-
-echo "Setting up output directory..."
-mkdir -p $OUTPUT_DIR
-
-mkdir -p $TMP_DIR
 
 if [ -t 1 ] && command -v tput >/dev/null; then
     RED=$(tput setaf 1)
@@ -124,158 +115,175 @@ now_ms() {
     fi
 }
 
-for test_spec_file in "$INPUT_DIR"/*.yaml;
+for test_folder in test/*;
 do
-    filename=$(basename -- "$test_spec_file" .yaml)
-    test_id=$( yq -r '.id' "$test_spec_file" )
-    echo "${BOLD}${YELLOW}Test ID: $test_id $test_spec_file${RESET}"
+    echo -e "In test folder: $test_folder"
+    SPEC_DIR="$test_folder/specs"
+    INPUT_DIR="$test_folder/input"
+    EXPECTED_DIR="$test_folder/expected"
+    OUTPUT_DIR="$test_folder/outputs"
+    TMP_DIR="$test_folder/tmp"
 
-    skip_test=$( yq -r '.skip // false' "$test_spec_file" )
-    if [ "$skip_test" == "true" ]; then
-        echo "[${BLUE}SKIP${RESET}] Skipping test $filename"
-        skip=$((skip + 1))
-        results+=("$test_id|N/A|SKIP")
-        continue
-    fi
+    echo "Setting up output directory..."
+    mkdir -p $OUTPUT_DIR
+    mkdir -p $TMP_DIR
 
-    output_out="$OUTPUT_DIR/${filename}.out"
-    output_err="$OUTPUT_DIR/${filename}.err"
+    for test_spec_file in "$SPEC_DIR"/*.yaml;
+    do
+        filename=$(basename -- "$test_spec_file" .yaml)
+        test_id=$( yq -r '.id' "$test_spec_file" )
+        echo "${BOLD}${YELLOW}Test ID: $test_id $test_spec_file${RESET}"
 
-    infile_type=$( yq -r '.input.type' "$test_spec_file" )
+        skip_test=$( yq -r '.skip // false' "$test_spec_file" )
+        if [ "$skip_test" == "true" ]; then
+            echo "[${BLUE}SKIP${RESET}] Skipping test $filename"
+            skip=$((skip + 1))
+            results+=("$test_id|N/A|SKIP")
+            continue
+        fi
 
-    if [ "$infile_type" == "file" ]; then
-        infile=$( yq -r '.input.file' "$test_spec_file" )
-        if [ ! -f "$infile" ]; then
-            echo "[${RED}ERROR${RESET}] Input file $infile does not exist for test $test_id"
+        output_out="$OUTPUT_DIR/${filename}.out"
+        output_err="$OUTPUT_DIR/${filename}.err"
+
+        infile_type=$( yq -r '.input.type' "$test_spec_file" )
+
+        if [ "$infile_type" == "file" ]; then
+            infile_name=$( yq -r '.input.file' "$test_spec_file" )
+            infile="$INPUT_DIR/$infile_name"
+            if [ ! -f "$infile" ]; then
+                echo "[${RED}ERROR${RESET}] Input file $infile does not exist for test $test_id"
+                fail=$((fail + 1))
+                continue
+            fi
+            cp "$infile" "$OUTPUT_DIR/${filename}.in"
+        elif [ "$infile_type" == "inline" ]; then
+            infile_content=$( yq -r '.input.inline' "$test_spec_file" )
+            echo "$infile_content" > "$OUTPUT_DIR/${filename}.in"
+            infile="$OUTPUT_DIR/${filename}.in"
+        else
+            echo "[${RED}ERROR${RESET}] Unknown infile type for test $test_id"
             fail=$((fail + 1))
             continue
         fi
-        cp "$infile" "$OUTPUT_DIR/${filename}.in"
-    elif [ "$infile_type" == "inline" ]; then
-        infile_content=$( yq -r '.input.inline' "$test_spec_file" )
-        echo "$infile_content" > "$OUTPUT_DIR/${filename}.in"
-        infile="$OUTPUT_DIR/${filename}.in"
-    else
-        echo "[${RED}ERROR${RESET}] Unknown infile type for test $test_id"
-        fail=$((fail + 1))
-        continue
-    fi
 
-    pre_hooks_type=$( yq -r '.hooks.pre.type // "none"' "$test_spec_file" )
-    if [ "$pre_hooks_type" != "none" ]; then
-        echo "Running pre-test hooks..."
-        if ! run_hooks "$pre_hooks_type" '.hooks.pre'; then
-            echo "[${RED}ERROR${RESET}] Pre test hooks failed for test $test_id"
-            continue
-        fi
-    fi
-
-    args=$(yq -r '.args // [] | if type=="string" then . else join(" ") end' "$test_spec_file")
-    set +e
-    status=0
-    start_time=$(now_ms)
-    echo "Running: $BIN $args < $infile"
-    "$BIN" $args < "$infile" > "$output_out" 2> "$output_err"
-    status=$?
-    end_time=$(now_ms)
-    duration=$((end_time - start_time))
-    if [ $duration -ge 1000 ]; then
-        dur_fmt="$((duration/1000)).$((duration%1000))s"
-    else
-        dur_fmt="${duration}ms"
-    fi
-    set -e
-
-    post_hooks_type=$( yq -r '.hooks.post.type // "none"' "$test_spec_file" )
-    if [ "$post_hooks_type" != "none" ]; then
-        echo "Runing post test hooks..."
-        if ! run_hooks "$post_hooks_type" '.hooks.post'; then
-            echo "[${RED}ERROR${RESET}] Post test hooks failed for test $test_id"
-            continue
-        fi
-    fi
-
-    ok=1
-    
-    # Compare stdout
-    echo "Comparing stdout..."
-    if [ $(yq -r '.expected_stdout.type' "$test_spec_file") == "file" ]; then
-        expected_out=$( yq -r '.expected_stdout.file' "$test_spec_file" )
-    elif [ $(yq -r '.expected_stdout.type' "$test_spec_file") == "inline" ]; then
-        expected_out="$TMP_DIR/${filename}.expected.out"
-        yq -r '.expected_stdout.inline | if type=="string" then . else .[] end' "$test_spec_file" > $expected_out
-    else
-        echo "[${YELLOW}WARN${RESET}] Unknown expected_stdout type for $filename"
-        ok=0
-    fi
-
-    if [ $ok -eq 1 ]; then
-        if [ -f "$expected_out" ]; then
-            normalize_line_endings "$expected_out" "$output_out"
-            if ! compare_files "$expected_out" "$output_out"; then
-                ok=0
+        pre_hooks_type=$( yq -r '.hooks.pre.type // "none"' "$test_spec_file" )
+        if [ "$pre_hooks_type" != "none" ]; then
+            echo "Running pre-test hooks..."
+            if ! run_hooks "$pre_hooks_type" '.hooks.pre'; then
+                echo "[${RED}ERROR${RESET}] Pre test hooks failed for test $test_id"
+                continue
             fi
+        fi
+
+        args=$(yq -r '.args // [] | if type=="string" then . else join(" ") end' "$test_spec_file")
+        set +e
+        status=0
+        start_time=$(now_ms)
+        echo "Running: $BIN $args < $infile"
+        "$BIN" $args "$infile" > "$output_out" 2> "$output_err"
+        status=$?
+        end_time=$(now_ms)
+        duration=$((end_time - start_time))
+        if [ $duration -ge 1000 ]; then
+            dur_fmt="$((duration/1000)).$((duration%1000))s"
         else
-            echo "[${YELLOW}WARN${RESET}] No expected stdout file for $filename"
+            dur_fmt="${duration}ms"
+        fi
+        set -e
+
+        post_hooks_type=$( yq -r '.hooks.post.type // "none"' "$test_spec_file" )
+        if [ "$post_hooks_type" != "none" ]; then
+            echo "Runing post test hooks..."
+            if ! run_hooks "$post_hooks_type" '.hooks.post'; then
+                echo "[${RED}ERROR${RESET}] Post test hooks failed for test $test_id"
+                continue
+            fi
+        fi
+
+        ok=1
+        
+        # Compare stdout
+        echo "Comparing stdout..."
+        if [ $(yq -r '.expected_stdout.type' "$test_spec_file") == "file" ]; then
+            relative_expected_out=$( yq -r '.expected_stdout.file' "$test_spec_file" )
+            expected_out="$EXPECTED_DIR/$relative_expected_out"
+        elif [ $(yq -r '.expected_stdout.type' "$test_spec_file") == "inline" ]; then
+            expected_out="$TMP_DIR/${filename}.expected.out"
+            yq -r '.expected_stdout.inline | if type=="string" then . else .[] end' "$test_spec_file" > $expected_out
+        else
+            echo "[${YELLOW}WARN${RESET}] Unknown expected_stdout type for $filename"
             ok=0
         fi
-    fi
 
-    # Compare stderr
-    if [ $(yq -r '.expected_stderr.type' "$test_spec_file") == "file" ]; then
-        expected_err=$( yq -r '.expected_stderr.file' "$test_spec_file" )
-    elif [ $(yq -r '.expected_stderr.type' "$test_spec_file") == "inline" ]; then
-        expected_err="$TMP_DIR/${filename}.expected.err"
-        yq -r '.expected_stderr.inline | if type=="string" then . else .[] end' "$test_spec_file" > $expected_err
-    else
-        echo "[${YELLOW}WARN${RESET}] Unknown expected_stderr type for $filename"
-        ok=0
-    fi
-
-    if [ $ok -eq 1 ]; then
-        echo "Comparing stderr..."
-        if [ -f "$expected_err" ]; then
-            normalize_line_endings "$expected_err" "$output_err"
-            if ! compare_files "$expected_err" "$output_err"; then
-                ok=0
-            fi
-        else
-            echo "[${YELLOW}WARN${RESET}] No expected stderr file for $filename"
-            ok=0
-        fi
-    fi
-
-    # Compare exit code
-    expected_code=$( yq -r '.expected_ec' "$test_spec_file" )
-    if [ $ok -eq 1 ]; then
-        echo "Comparing exit code..."
-        if [ "$expected_code" != "null" ]; then
-            if [ "$status" -ne "$expected_code" ]; then
-                echo "Exit code mismatch"
-                echo "EXPECTED: ${GREEN}$expected_code${RESET}"
-                echo "OUTPUT: ${RED}$status${RESET}"
-                ok=0
+        if [ $ok -eq 1 ]; then
+            if [ -f "$expected_out" ]; then
+                normalize_line_endings "$expected_out" "$output_out"
+                if ! compare_files "$expected_out" "$output_out"; then
+                    ok=0
+                fi
             else
-                echo "Exit code: ${GREEN}$status${RESET}"
+                echo "[${YELLOW}WARN${RESET}] No expected stdout file for $filename"
+                ok=0
             fi
+        fi
+
+        # Compare stderr
+        if [ $(yq -r '.expected_stderr.type' "$test_spec_file") == "file" ]; then
+            relative_expected_err=$( yq -r '.expected_stderr.file' "$test_spec_file" )
+            expected_err="$EXPECTED_DIR/$relative_expected_err"
+        elif [ $(yq -r '.expected_stderr.type' "$test_spec_file") == "inline" ]; then
+            expected_err="$TMP_DIR/${filename}.expected.err"
+            yq -r '.expected_stderr.inline | if type=="string" then . else .[] end' "$test_spec_file" > $expected_err
         else
-            echo "[${YELLOW}WARN${RESET}] No expected exit code for $filename"
+            echo "[${YELLOW}WARN${RESET}] Unknown expected_stderr type for $filename"
             ok=0
         fi
-    fi
 
-    if [ $ok -eq 1 ]; then
-        echo "[${GREEN}PASS${RESET}] Test $test_id: PASS"
-        pass=$((pass + 1))
-        results+=("$test_id|${dur_fmt}|PASS")
-    else
-        echo "[${RED}FAIL${RESET}] Test $test_id: FAIL"
-        fail=$((fail + 1))
-        results+=("$test_id|${dur_fmt}|FAIL")
-    fi
+        if [ $ok -eq 1 ]; then
+            echo "Comparing stderr..."
+            if [ -f "$expected_err" ]; then
+                normalize_line_endings "$expected_err" "$output_err"
+                if ! compare_files "$expected_err" "$output_err"; then
+                    ok=0
+                fi
+            else
+                echo "[${YELLOW}WARN${RESET}] No expected stderr file for $filename"
+                ok=0
+            fi
+        fi
+
+        # Compare exit code
+        expected_code=$( yq -r '.expected_ec' "$test_spec_file" )
+        if [ $ok -eq 1 ]; then
+            echo "Comparing exit code..."
+            if [ "$expected_code" != "null" ]; then
+                if [ "$status" -ne "$expected_code" ]; then
+                    echo "Exit code mismatch"
+                    echo "EXPECTED: ${GREEN}$expected_code${RESET}"
+                    echo "OUTPUT: ${RED}$status${RESET}"
+                    ok=0
+                else
+                    echo "Exit code: ${GREEN}$status${RESET}"
+                fi
+            else
+                echo "[${YELLOW}WARN${RESET}] No expected exit code for $filename"
+                ok=0
+            fi
+        fi
+
+        if [ $ok -eq 1 ]; then
+            echo "[${GREEN}PASS${RESET}] Test $test_id: PASS"
+            pass=$((pass + 1))
+            results+=("$test_id|${dur_fmt}|PASS")
+        else
+            echo "[${RED}FAIL${RESET}] Test $test_id: FAIL"
+            fail=$((fail + 1))
+            results+=("$test_id|${dur_fmt}|FAIL")
+        fi
+    done
+
+    rm -rf $TMP_DIR
 done
-
-rm -rf $TMP_DIR
 
 echo
 echo "+----------------------+------------+--------+"
