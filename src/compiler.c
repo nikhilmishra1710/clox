@@ -3,6 +3,7 @@
 #include "include/memory.h"
 #include "include/object.h"
 #include "include/scanner.h"
+#include <stdint.h>
 #include <stdio.h>
 
 #define UINT8_COUNT UINT8_MAX + 1
@@ -10,6 +11,13 @@
 #ifdef DEBUG_PRINT_CODE
 #include "include/debug.h"
 #endif
+
+typedef struct {
+    Token current;
+    Token previous;
+    bool hadError;
+    bool panicMode;
+} Parser;
 
 typedef enum {
     PREC_NONE,
@@ -27,6 +35,7 @@ typedef enum {
 } Precedence;
 
 typedef void (*ParseFn)(bool canAssign);
+
 typedef struct {
     ParseFn prefix;
     ParseFn infix;
@@ -165,7 +174,7 @@ static void emitReturn(void) {
 
 static uint8_t makeConstant(Value value) {
     int constant = addConstant(currentChunk(), value);
-    if (constant > 255) {
+    if (constant > UINT8_MAX) {
         error("Too many constant in one chunk");
         return 0;
     }
@@ -180,7 +189,7 @@ static void emitConstant(Value value) {
 static void patchJump(int offset) {
     int jump = currentChunk()->count - offset - 2;
 
-    if (jump > (int) UINT16_MAX + 1) {
+    if (jump > (int) UINT16_MAX) {
         error("too much code to jump over");
     }
 
@@ -580,7 +589,6 @@ static void unary(bool canAssign) {
     (void) canAssign;
     TokenType operatorType = parser.previous.type;
 
-    expression();
     parsePrecedence(PREC_UNARY);
     switch (operatorType) {
     case TOKEN_BANG:
@@ -780,6 +788,48 @@ static void expressionStmt(void) {
     emitByte(OP_POP);
 }
 
+static void forStatement(void) {
+    beginScope();
+    consume(TOKEN_LEFT_PAREN, "Expected '(' after 'for'");
+    if (match(TOKEN_SEMICOLON)) {
+
+    } else if (match(TOKEN_VAR)) {
+        varDeclaration();
+    } else {
+        expressionStmt();
+    }
+
+    int loopStart = currentChunk()->count;
+    int exitJump = -1;
+    if (!match(TOKEN_SEMICOLON)) {
+        expression();
+        consume(TOKEN_SEMICOLON, "Expect ';' after loop condition.");
+        exitJump = emitJump(OP_JUMP_IF_FALSE);
+        emitByte(OP_POP);
+    }
+
+    if (!match(TOKEN_RIGHT_PAREN)) {
+        int bodyJump = emitJump(OP_JUMP);
+        int incrementStart = currentChunk()->count;
+        expression();
+        emitByte(OP_POP);
+        consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
+
+        emitLoop(loopStart);
+        loopStart = incrementStart;
+        patchJump(bodyJump);
+    }
+    statement();
+    emitLoop(loopStart);
+
+    if (exitJump != -1) {
+        patchJump(exitJump);
+        emitByte(OP_POP); // Condition.
+    }
+
+    endScope();
+}
+
 static void ifStatement(void) {
     consume(TOKEN_LEFT_PAREN, "Expected '(' after if.");
     expression();
@@ -819,48 +869,6 @@ static void returnStatement(void) {
         consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
         emitByte(OP_RETURN);
     }
-}
-
-static void forStatement(void) {
-    beginScope();
-    consume(TOKEN_LEFT_PAREN, "Expected '(' after for");
-    if (match(TOKEN_SEMICOLON)) {
-
-    } else if (match(TOKEN_VAR)) {
-        varDeclaration();
-    } else {
-        expressionStmt();
-    }
-
-    int loopStart = currentChunk()->count;
-    int exitJump = -1;
-    if (!match(TOKEN_SEMICOLON)) {
-        expression();
-        consume(TOKEN_SEMICOLON, "Expect ';' after loop condition.");
-        exitJump = emitJump(OP_JUMP_IF_FALSE);
-        emitByte(OP_POP);
-    }
-
-    if (!match(TOKEN_RIGHT_PAREN)) {
-        int bodyJump = emitJump(OP_JUMP);
-        int incrementStart = currentChunk()->count;
-        expression();
-        emitByte(OP_POP);
-        consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
-
-        emitLoop(loopStart);
-        loopStart = incrementStart;
-        patchJump(bodyJump);
-    }
-    statement();
-    emitLoop(loopStart);
-
-    if (exitJump != -1) {
-        patchJump(exitJump);
-        emitByte(OP_POP); // Condition.
-    }
-
-    endScope();
 }
 
 static void whileStatement(void) {

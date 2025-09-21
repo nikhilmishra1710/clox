@@ -6,12 +6,6 @@
 #include "object.h"
 #include "scanner.h"
 
-typedef struct {
-    Token current;
-    Token previous;
-    bool hadError;
-    bool panicMode;
-} Parser;
 
 ObjFunction* compile(const char* source);
 void markCompilerRoots(void);
