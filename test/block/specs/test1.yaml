@@ -1,0 +1,18 @@
+id: CLOX-101
+
+name: Empty block declaration
+input:
+    type: file
+    file: empty.lox
+
+expected_stdout:
+    type: file
+    file: empty.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10

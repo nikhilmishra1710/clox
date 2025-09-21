@@ -1,0 +1,18 @@
+id: CLOX-102
+
+name: Scope in block declaration
+input:
+    type: file
+    file: scope.lox
+
+expected_stdout:
+    type: file
+    file: scope.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10
