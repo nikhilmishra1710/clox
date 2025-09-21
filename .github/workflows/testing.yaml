@@ -24,6 +24,9 @@ jobs:
             gcc make \
             yq diffutils
 
+      - name: Make tester executable
+        run: chmod +x tester.sh
+
       - name: Build project and run test suite
         run: make test
 
