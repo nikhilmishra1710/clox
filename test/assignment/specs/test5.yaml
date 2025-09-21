@@ -1,0 +1,18 @@
+id: CLOX-005
+
+name: Assignment of local variables behaviour
+input:
+    type: file
+    file: local.lox
+
+expected_stdout:
+    type: file
+    file: local.out.expected
+
+expected_stderr:
+    type: inline
+    inline: 
+
+expected_ec: 0
+
+timeout: 10

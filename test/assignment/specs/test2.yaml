@@ -1,0 +1,18 @@
+id: CLOX-002
+
+name: Assignment of global variables behaviour
+input:
+    type: file
+    file: global.lox
+
+expected_stdout:
+    type: file
+    file: global.out.expected
+
+expected_stderr:
+    type: inline
+    inline: 
+
+expected_ec: 0
+
+timeout: 10

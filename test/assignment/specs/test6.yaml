@@ -1,0 +1,18 @@
+id: CLOX-006
+
+name: Prefix operator assignment behaviour
+input:
+    type: file
+    file: prefix_operator.lox
+
+expected_stdout:
+    type: inline
+    inline: 
+
+expected_stderr:
+    type: file
+    file: prefix_operator.err.expected
+
+expected_ec: 65
+
+timeout: 10

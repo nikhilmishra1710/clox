@@ -1,0 +1,18 @@
+id: CLOX-004
+
+name: Infix operator assignment behaviour
+input:
+    type: file
+    file: infix_operator.lox
+
+expected_stdout:
+    type: inline
+    inline: 
+
+expected_stderr:
+    type: file
+    file: infix_operator.err.expected
+
+expected_ec: 65
+
+timeout: 10

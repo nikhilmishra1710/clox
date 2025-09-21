@@ -1,0 +1,18 @@
+id: CLOX-009
+
+name: Undefined assignment behaviour
+input:
+    type: file
+    file: undefined.lox
+
+expected_stdout:
+    type: inline
+    inline: 
+
+expected_stderr:
+    type: file
+    file: undefined.err.expected
+
+expected_ec: 70
+
+timeout: 10

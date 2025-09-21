@@ -1,0 +1,18 @@
+id: CLOX-001
+
+name: Associativity of assignment operator
+input:
+    type: file
+    file: associativity.lox
+
+expected_stdout:
+    type: file
+    file: associativity.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10

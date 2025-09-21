@@ -1,0 +1,18 @@
+id: CLOX-003
+
+name: Grouping statement behaviour
+input:
+    type: file
+    file: grouping.lox
+
+expected_stdout:
+    type: inline
+    inline: 
+
+expected_stderr:
+    type: file
+    file: grouping.err.expected
+
+expected_ec: 65
+
+timeout: 10

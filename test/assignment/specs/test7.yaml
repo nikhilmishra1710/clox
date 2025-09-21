@@ -1,0 +1,18 @@
+id: CLOX-007
+
+name: Assignment syntax behaviour
+input:
+    type: file
+    file: syntax.lox
+
+expected_stdout:
+    type: file
+    file: syntax.out.expected
+
+expected_stderr:
+    type: inline
+    inline: 
+
+expected_ec: 0
+
+timeout: 10

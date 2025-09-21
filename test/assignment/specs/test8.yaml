@@ -1,0 +1,18 @@
+id: CLOX-008
+
+name: this assignment behaviour
+input:
+    type: file
+    file: to_this.lox
+
+expected_stdout:
+    type: inline
+    inline: 
+
+expected_stderr:
+    type: file
+    file: to_this.err.expected
+
+expected_ec: 65
+
+timeout: 10
