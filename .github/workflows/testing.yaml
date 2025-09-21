@@ -24,13 +24,8 @@ jobs:
             gcc make \
             yq diffutils
 
-      - name: Build project
-        run: make
-
-      - name: Run test suite
-        run: |
-          chmod +x tests/tester.sh
-          ./tests/tester.sh
+      - name: Build project and run test suite
+        run: make test
 
       - name: Upload test outputs
         if: failure()
