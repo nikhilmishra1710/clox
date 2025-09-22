@@ -62,3 +62,4 @@ coverage-report/
 test/**/outputs/
 src/output.txt
 src/error.txt
+tests/**

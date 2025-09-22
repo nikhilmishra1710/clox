@@ -74,7 +74,9 @@ compare_files() {
     do
         IFS= read -r -u 3 expected_line || expected_eof=true
         IFS= read -r -u 4 actual_line || actual_eof=true
-
+        if [ "${expected_eof:-false}" = true ] && [ "${actual_eof:-false}" = true ]; then
+            break
+        fi
         if [ "${expected_eof:-false}" = true ] && [ "${actual_eof:-false}" != true ]; then
             echo "EXPECTED: ${GREEN}<EOF>${RESET}"
             echo "OUTPUT: ${RED}$actual_line${RESET}"
@@ -91,9 +93,6 @@ compare_files() {
             echo "OUTPUT: ${GREEN}$actual_line${RESET}"
         fi
 
-        if [ "${expected_eof:-false}" = true ] && [ "${actual_eof:-false}" = true ]; then
-            break
-        fi
     done
 
     return 0

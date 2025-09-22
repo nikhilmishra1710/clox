@@ -1,0 +1,18 @@
+id: CLOX-201
+
+name: Equality test for bool type check
+input:
+    type: file
+    file: equality.lox
+
+expected_stdout:
+    type: file
+    file: equality.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10
