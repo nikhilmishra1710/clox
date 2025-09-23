@@ -1,0 +1,18 @@
+id: CLOX-305
+
+name: string value call
+input:
+    type: file
+    file: string.lox
+
+expected_stdout:
+    type: inline
+    file: 
+
+expected_stderr:
+    type: file
+    file: string.err.expected
+
+expected_ec: 70
+
+timeout: 10
