@@ -1,0 +1,18 @@
+id: CLOX-403
+
+name: inherited method of class
+input:
+    type: file
+    file: inherited_method.lox
+
+expected_stdout:
+    type: file
+    file: inherited_method.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10

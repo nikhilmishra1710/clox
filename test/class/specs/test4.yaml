@@ -1,0 +1,18 @@
+id: CLOX-404
+
+name: local inherit other class
+input:
+    type: file
+    file: local_inherit_other.lox
+
+expected_stdout:
+    type: file
+    file: local_inherit_other.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10

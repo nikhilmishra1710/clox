@@ -1,0 +1,18 @@
+id: CLOX-407
+
+name: reference self class
+input:
+    type: file
+    file: reference_self.lox
+
+expected_stdout:
+    type: file
+    file: reference_self.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10
