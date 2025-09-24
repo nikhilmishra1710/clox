@@ -1,0 +1,18 @@
+id: CLOX-603
+
+name: comment
+input:
+    type: file
+    file: only_line_comment.lox
+
+expected_stdout:
+    type: inline
+    file: 
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10
