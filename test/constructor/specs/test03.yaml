@@ -1,0 +1,18 @@
+id: CLOX-703
+
+name: constructor
+input:
+  type: file
+  file: call_init_explicitly.lox
+
+expected_stdout:
+  type: file
+  file: call_init_explicitly.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

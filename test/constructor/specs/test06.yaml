@@ -1,0 +1,18 @@
+id: CLOX-706
+
+name: constructor
+input:
+  type: file
+  file: early_return.lox
+
+expected_stdout:
+  type: file
+  file: early_return.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

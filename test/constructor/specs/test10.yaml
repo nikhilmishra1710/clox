@@ -1,0 +1,18 @@
+id: CLOX-710
+
+name: constructor
+input:
+  type: file
+  file: return_in_nested_function.lox
+
+expected_stdout:
+  type: file
+  file: return_in_nested_function.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

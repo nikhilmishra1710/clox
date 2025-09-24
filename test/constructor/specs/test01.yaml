@@ -1,0 +1,18 @@
+id: CLOX-701
+
+name: constructor
+input:
+  type: file
+  file: arguments.lox
+
+expected_stdout:
+  type: file
+  file: arguments.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10
