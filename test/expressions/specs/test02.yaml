@@ -1,0 +1,18 @@
+id: CLOX-802
+
+name: expressions
+input:
+  type: file
+  file: parse.lox
+
+expected_stdout:
+  type: file
+  file: parse.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

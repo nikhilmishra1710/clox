@@ -1,0 +1,8 @@
+// Note: This is just for the expression parsing chapter which prints the AST.
+// expect: (+ (group (- 5.0 (group (- 3.0 1.0)))) (- 1.0))
+// But since CLOX doesn't generate AST. A simple expression printer
+print (5 - (3 - 1)) + -1;
+print true;
+print false;
+print nil;
+print "Str1" + " Str2";
