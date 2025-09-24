@@ -6,6 +6,7 @@
 #include "include/nativeFunction.h"
 #include "include/object.h"
 #include "include/table.h"
+#include "include/value.h"
 
 VM vm;
 
@@ -384,9 +385,7 @@ static InterpretResult run(void) {
             }
             if (!bindMethod(instance->klass, name)) {
                 return INTERPRET_RUNTIME_ERROR;
-            }
-            runtimeError("Undefined property '%s'.", name->chars);
-            return INTERPRET_RUNTIME_ERROR;
+            }            
             break;
         }
         case OP_SET_PROPERTY: {
