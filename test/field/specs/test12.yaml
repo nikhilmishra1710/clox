@@ -1,0 +1,18 @@
+id: CLOX-912
+
+name: field
+input:
+  type: file
+  file: method_binds_this.lox
+
+expected_stdout:
+  type: file
+  file: method_binds_this.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

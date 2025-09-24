@@ -1,0 +1,18 @@
+id: CLOX-909
+
+name: field
+input:
+  type: file
+  file: get_on_string.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: get_on_string.err.expected
+
+expected_ec: 70
+
+timeout: 10

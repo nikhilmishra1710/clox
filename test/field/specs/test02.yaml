@@ -1,0 +1,18 @@
+id: CLOX-902
+
+name: field
+input:
+  type: file
+  file: call_nonfunction_field.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: call_nonfunction_field.err.expected
+
+expected_ec: 70
+
+timeout: 10

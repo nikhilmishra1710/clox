@@ -1,0 +1,18 @@
+id: CLOX-916
+
+name: field
+input:
+  type: file
+  file: set_on_class.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: set_on_class.err.expected
+
+expected_ec: 70
+
+timeout: 10

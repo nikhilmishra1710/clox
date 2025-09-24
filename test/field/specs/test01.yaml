@@ -1,0 +1,18 @@
+id: CLOX-901
+
+name: field
+input:
+  type: file
+  file: call_function_field.lox
+
+expected_stdout:
+  type: file
+  file: call_function_field.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10
