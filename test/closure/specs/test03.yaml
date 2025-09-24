@@ -1,0 +1,18 @@
+id: CLOX-503
+
+name: close over function parameter
+input:
+    type: file
+    file: close_over_function_parameter.lox
+
+expected_stdout:
+    type: file
+    file: close_over_function_parameter.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10

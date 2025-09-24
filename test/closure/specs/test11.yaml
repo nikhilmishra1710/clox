@@ -1,0 +1,18 @@
+id: CLOX-511
+
+name: closed closure in function
+input:
+    type: file
+    file: reuse_closure_slot.lox
+
+expected_stdout:
+    type: file
+    file: reuse_closure_slot.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10

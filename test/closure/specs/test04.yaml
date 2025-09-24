@@ -1,0 +1,18 @@
+id: CLOX-504
+
+name: close over later variable
+input:
+    type: file
+    file: close_over_later_variable.lox
+
+expected_stdout:
+    type: file
+    file: close_over_later_variable.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10

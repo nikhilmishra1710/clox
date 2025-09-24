@@ -1,0 +1,18 @@
+id: CLOX-512
+
+name: closed closure in function
+input:
+    type: file
+    file: shadow_closure_with_local.lox
+
+expected_stdout:
+    type: file
+    file: shadow_closure_with_local.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10

@@ -1,0 +1,18 @@
+id: CLOX-507
+
+name: closed closure in function
+input:
+    type: file
+    file: nested_closure.lox
+
+expected_stdout:
+    type: file
+    file: nested_closure.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10

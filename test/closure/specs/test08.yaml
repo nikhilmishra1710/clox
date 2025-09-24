@@ -1,0 +1,18 @@
+id: CLOX-508
+
+name: closed closure in function
+input:
+    type: file
+    file: open_closure_in_function.lox
+
+expected_stdout:
+    type: file
+    file: open_closure_in_function.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10

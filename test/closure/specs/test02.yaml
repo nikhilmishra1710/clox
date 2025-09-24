@@ -1,0 +1,18 @@
+id: CLOX-502
+
+name: assign to shadowed later
+input:
+    type: file
+    file: assign_to_shadowed_later.lox
+
+expected_stdout:
+    type: file
+    file: assign_to_shadowed_later.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10

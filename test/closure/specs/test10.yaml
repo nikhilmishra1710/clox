@@ -1,0 +1,18 @@
+id: CLOX-510
+
+name: closed closure in function
+input:
+    type: file
+    file: reference_closure_multiple_times.lox
+
+expected_stdout:
+    type: file
+    file: reference_closure_multiple_times.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10

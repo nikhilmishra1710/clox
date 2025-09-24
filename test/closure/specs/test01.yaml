@@ -1,0 +1,18 @@
+id: CLOX-501
+
+name: assign to closure
+input:
+    type: file
+    file: assign_to_closure.lox
+
+expected_stdout:
+    type: file
+    file: assign_to_closure.out.expected
+
+expected_stderr:
+    type: inline
+    file: 
+
+expected_ec: 0
+
+timeout: 10
