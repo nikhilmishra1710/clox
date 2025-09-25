@@ -1,0 +1,18 @@
+id: CLOX-1111
+
+name: function
+input:
+  type: file
+  file: print.lox
+
+expected_stdout:
+  type: file
+  file: print.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

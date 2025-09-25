@@ -1,0 +1,18 @@
+id: CLOX-1109
+
+name: function
+input:
+  type: file
+  file: nested_call_with_arguments.lox
+
+expected_stdout:
+  type: file
+  file: nested_call_with_arguments.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

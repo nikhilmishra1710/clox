@@ -1,0 +1,18 @@
+id: CLOX-1106
+
+name: function
+input:
+  type: file
+  file: missing_arguments.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: missing_arguments.err.expected
+
+expected_ec: 70
+
+timeout: 10

@@ -1,0 +1,18 @@
+id: CLOX-1101
+
+name: function
+input:
+  type: file
+  file: body_must_be_block.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: body_must_be_block.err.expected
+
+expected_ec: 65
+
+timeout: 10
