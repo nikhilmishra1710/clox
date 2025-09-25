@@ -1,0 +1,18 @@
+id: CLOX-1206
+
+name: if
+input:
+  type: file
+  file: fun_in_then.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: fun_in_then.err.expected
+
+expected_ec: 65
+
+timeout: 10

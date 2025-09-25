@@ -1,0 +1,18 @@
+id: CLOX-1203
+
+name: if
+input:
+  type: file
+  file: dangling_else.lox
+
+expected_stdout:
+  type: file
+  file: dangling_else.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

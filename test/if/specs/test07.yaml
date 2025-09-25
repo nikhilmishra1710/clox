@@ -1,0 +1,18 @@
+id: CLOX-1207
+
+name: if
+input:
+  type: file
+  file: if.lox
+
+expected_stdout:
+  type: file
+  file: if.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10
