@@ -1,0 +1,18 @@
+id: CLOX-1302
+
+name: inheritance
+input:
+  type: file
+  file: inherit_from_function.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: inherit_from_function.err.expected
+
+expected_ec: 70
+
+timeout: 10

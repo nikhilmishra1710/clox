@@ -1,0 +1,18 @@
+id: CLOX-1307
+
+name: inheritance
+input:
+  type: file
+  file: set_fields_from_base_class.lox
+
+expected_stdout:
+  type: file
+  file: set_fields_from_base_class.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

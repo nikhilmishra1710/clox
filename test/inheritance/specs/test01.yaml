@@ -1,0 +1,18 @@
+id: CLOX-1301
+
+name: inheritance
+input:
+  type: file
+  file: constructor.lox
+
+expected_stdout:
+  type: file
+  file: constructor.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

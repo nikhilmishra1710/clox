@@ -1,0 +1,18 @@
+id: CLOX-1306
+
+name: inheritance
+input:
+  type: file
+  file: parenthesized_superclass.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: parenthesized_superclass.err.expected
+
+expected_ec: 65
+
+timeout: 10
