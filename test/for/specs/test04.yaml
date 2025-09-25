@@ -1,0 +1,18 @@
+id: CLOX-1004
+
+name: for loop
+input:
+  type: file
+  file: return_closure.lox
+
+expected_stdout:
+  type: file
+  file: return_closure.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

@@ -1,0 +1,18 @@
+id: CLOX-1003
+
+name: for loop
+input:
+  type: file
+  file: fun_in_body.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: fun_in_body.err.expected
+
+expected_ec: 65
+
+timeout: 10
