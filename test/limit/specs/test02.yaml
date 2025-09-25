@@ -1,0 +1,18 @@
+id: CLOX-1402
+
+name: limit
+input:
+  type: file
+  file: no_reuse_constants.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: no_reuse_constants.err.expected
+
+expected_ec: 65
+
+timeout: 10
