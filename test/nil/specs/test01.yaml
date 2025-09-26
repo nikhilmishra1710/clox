@@ -1,0 +1,18 @@
+id: CLOX-1701
+
+name: nil
+input:
+  type: file
+  file: literal.lox
+
+expected_stdout:
+  type: file
+  file: literal.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

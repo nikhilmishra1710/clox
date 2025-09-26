@@ -1,0 +1,18 @@
+id: CLOX-1804
+
+name: number
+input:
+  type: file
+  file: nan_equality.lox
+
+expected_stdout:
+  type: file
+  file: nan_equality.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10
