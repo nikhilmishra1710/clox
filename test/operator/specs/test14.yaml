@@ -1,0 +1,18 @@
+id: CLOX-1914
+
+name: operator
+input:
+  type: file
+  file: equals_method.lox
+
+expected_stdout:
+  type: file
+  file: equals_method.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

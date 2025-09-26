@@ -1,0 +1,18 @@
+id: CLOX-1930
+
+name: operator
+input:
+  type: file
+  file: not_equals.lox
+
+expected_stdout:
+  type: file
+  file: not_equals.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

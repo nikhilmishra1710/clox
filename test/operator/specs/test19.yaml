@@ -1,0 +1,18 @@
+id: CLOX-1919
+
+name: operator
+input:
+  type: file
+  file: less_nonnum_num.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: less_nonnum_num.err.expected
+
+expected_ec: 70
+
+timeout: 10

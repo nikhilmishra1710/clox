@@ -1,0 +1,18 @@
+id: CLOX-1923
+
+name: operator
+input:
+  type: file
+  file: multiply.lox
+
+expected_stdout:
+  type: file
+  file: multiply.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

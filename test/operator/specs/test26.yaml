@@ -1,0 +1,18 @@
+id: CLOX-1926
+
+name: operator
+input:
+  type: file
+  file: negate.lox
+
+expected_stdout:
+  type: file
+  file: negate.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

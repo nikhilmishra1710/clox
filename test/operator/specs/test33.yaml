@@ -1,0 +1,18 @@
+id: CLOX-1933
+
+name: operator
+input:
+  type: file
+  file: subtract_num_nonnum.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: subtract_num_nonnum.err.expected
+
+expected_ec: 70
+
+timeout: 10

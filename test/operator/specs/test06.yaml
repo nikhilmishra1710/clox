@@ -1,0 +1,18 @@
+id: CLOX-1906
+
+name: operator
+input:
+  type: file
+  file: add_num_nil.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: add_num_nil.err.expected
+
+expected_ec: 70
+
+timeout: 10

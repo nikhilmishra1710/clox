@@ -1,0 +1,18 @@
+id: CLOX-1931
+
+name: operator
+input:
+  type: file
+  file: subtract.lox
+
+expected_stdout:
+  type: file
+  file: subtract.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10
