@@ -1,0 +1,18 @@
+id: CLOX-1504
+
+name: logical operators
+input:
+  type: file
+  file: or_truth.lox
+
+expected_stdout:
+  type: file
+  file: or_truth.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10
