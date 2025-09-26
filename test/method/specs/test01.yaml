@@ -1,0 +1,18 @@
+id: CLOX-1601
+
+name: method
+input:
+  type: file
+  file: arity.lox
+
+expected_stdout:
+  type: file
+  file: arity.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

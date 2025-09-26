@@ -1,0 +1,18 @@
+id: CLOX-1603
+
+name: method
+input:
+  type: file
+  file: extra_arguments.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: extra_arguments.err.expected
+
+expected_ec: 70
+
+timeout: 10

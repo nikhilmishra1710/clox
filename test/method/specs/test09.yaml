@@ -1,0 +1,18 @@
+id: CLOX-1609
+
+name: method
+input:
+  type: file
+  file: too_many_parameters.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: too_many_parameters.err.expected
+
+expected_ec: 65
+
+timeout: 10
