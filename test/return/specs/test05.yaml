@@ -1,0 +1,18 @@
+id: CLOX-2005
+
+name: return
+input:
+  type: file
+  file: in_function.lox
+
+expected_stdout:
+  type: file
+  file: in_function.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

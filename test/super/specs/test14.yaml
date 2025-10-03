@@ -1,0 +1,18 @@
+id: CLOX-2214
+
+name: super
+input:
+  type: file
+  file: super_at_top_level.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: super_at_top_level.err.expected
+
+expected_ec: 65
+
+timeout: 10

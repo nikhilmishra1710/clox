@@ -1,0 +1,18 @@
+id: CLOX-2203
+
+name: super
+input:
+  type: file
+  file: call_same_method.lox
+
+expected_stdout:
+  type: file
+  file: call_same_method.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

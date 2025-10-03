@@ -1,0 +1,18 @@
+id: CLOX-2402
+
+name: variable
+input:
+  type: file
+  file: duplicate_local.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: duplicate_local.err.expected
+
+expected_ec: 65
+
+timeout: 10

@@ -1,0 +1,18 @@
+id: CLOX-2417
+
+name: variable
+input:
+  type: file
+  file: unreached_undefined.lox
+
+expected_stdout:
+  type: file
+  file: unreached_undefined.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

@@ -1,0 +1,18 @@
+id: CLOX-2302
+
+name: this
+input:
+  type: file
+  file: nested_class.lox
+
+expected_stdout:
+  type: file
+  file: nested_class.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

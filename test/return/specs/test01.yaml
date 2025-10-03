@@ -1,0 +1,18 @@
+id: CLOX-2001
+
+name: return
+input:
+  type: file
+  file: after_else.lox
+
+expected_stdout:
+  type: file
+  file: after_else.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

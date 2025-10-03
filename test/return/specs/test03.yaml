@@ -1,0 +1,18 @@
+id: CLOX-2003
+
+name: return
+input:
+  type: file
+  file: after_while.lox
+
+expected_stdout:
+  type: file
+  file: after_while.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

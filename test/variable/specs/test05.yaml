@@ -1,0 +1,18 @@
+id: CLOX-2405
+
+name: variable
+input:
+  type: file
+  file: in_middle_of_block.lox
+
+expected_stdout:
+  type: file
+  file: in_middle_of_block.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

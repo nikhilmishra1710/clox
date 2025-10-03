@@ -1,0 +1,18 @@
+id: CLOX-2102
+
+name: string
+input:
+  type: file
+  file: literals.lox
+
+expected_stdout:
+  type: file
+  file: literals.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

@@ -1,0 +1,18 @@
+id: CLOX-2501
+
+name: while loop
+input:
+  type: file
+  file: class_in_body.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: class_in_body.err.expected
+
+expected_ec: 65
+
+timeout: 10

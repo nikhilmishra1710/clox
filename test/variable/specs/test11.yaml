@@ -1,0 +1,18 @@
+id: CLOX-2411
+
+name: variable
+input:
+  type: file
+  file: shadow_and_local.lox
+
+expected_stdout:
+  type: file
+  file: shadow_and_local.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

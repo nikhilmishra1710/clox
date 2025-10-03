@@ -1,0 +1,18 @@
+id: CLOX-2506
+
+name: while loop
+input:
+  type: file
+  file: syntax.lox
+
+expected_stdout:
+  type: file
+  file: syntax.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

@@ -1,0 +1,18 @@
+id: CLOX-2206
+
+name: super
+input:
+  type: file
+  file: extra_arguments.lox
+
+expected_stdout:
+  type: file
+  file: extra_arguments.out.expected
+
+expected_stderr:
+  type: file
+  file: extra_arguments.err.expected
+
+expected_ec: 70
+
+timeout: 10

@@ -1,0 +1,18 @@
+id: CLOX-2301
+
+name: this
+input:
+  type: file
+  file: closure.lox
+
+expected_stdout:
+  type: file
+  file: closure.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

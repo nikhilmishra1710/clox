@@ -1,0 +1,18 @@
+id: CLOX-2420
+
+name: variable
+input:
+  type: file
+  file: use_local_in_initializer.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: use_local_in_initializer.err.expected
+
+expected_ec: 65
+
+timeout: 10

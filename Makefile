@@ -8,7 +8,7 @@ LIB_DIR := lib
 INC_DIR := src/include
 TEST_DIR := tests
 COVERAGE_DIR := coverage-report
-
+COVERAGE_BIN  := $(BIN_DIR)/coverage/$(PROJECT_NAME)
 TEST_TARGET := bin/test/clox
 
 CC := gcc
@@ -117,15 +117,15 @@ format:
 	clang-format -i $(SRC_FILES) $(HDR_FILES)
 
 .PHONY: coverage
-coverage: clean
-	@echo "Building testing executable"
+coverage:
+	@echo "Building coverage executable"
 	$(MAKE) BUILD_TYPE=coverage
 	@echo "Testing build completed"
-	./tester.sh $(TARGET) $(TEST_DIR)
+	./tester.sh $(COVERAGE_BIN) $(TEST_DIR)
 	@echo "Collecting coverage data..."
 	mkdir -p $(COVERAGE_DIR)
 	lcov --capture --directory . --output-file $(COVERAGE_DIR)/coverage.info
-	lcov --extract $(COVERAGE_DIR)/coverage.info "$(pwd)/src/*" --output-file $(COVERAGE_DIR)/coverage.info
+	lcov --extract $(COVERAGE_DIR)/coverage.info "$(CURDIR)/src/*" --output-file $(COVERAGE_DIR)/coverage.info
 	genhtml $(COVERAGE_DIR)/coverage.info --output-directory $(COVERAGE_DIR)
 	@echo "Coverage report generated at $(COVERAGE_DIR)/index.html"
 

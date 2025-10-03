@@ -1,0 +1,18 @@
+id: CLOX-2419
+
+name: variable
+input:
+  type: file
+  file: use_global_in_initializer.lox
+
+expected_stdout:
+  type: file
+  file: use_global_in_initializer.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

@@ -1,0 +1,18 @@
+id: CLOX-2407
+
+name: variable
+input:
+  type: file
+  file: local_from_method.lox
+
+expected_stdout:
+  type: file
+  file: local_from_method.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

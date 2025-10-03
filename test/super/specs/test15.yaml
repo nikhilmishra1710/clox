@@ -1,0 +1,18 @@
+id: CLOX-2215
+
+name: super
+input:
+  type: file
+  file: super_in_closure_in_inherited_method.lox
+
+expected_stdout:
+  type: file
+  file: super_in_closure_in_inherited_method.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

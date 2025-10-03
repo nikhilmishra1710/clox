@@ -1,0 +1,18 @@
+id: CLOX-2410
+
+name: variable
+input:
+  type: file
+  file: scope_reuse_in_different_blocks.lox
+
+expected_stdout:
+  type: file
+  file: scope_reuse_in_different_blocks.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

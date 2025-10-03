@@ -1,0 +1,18 @@
+id: CLOX-2416
+
+name: variable
+input:
+  type: file
+  file: uninitialized.lox
+
+expected_stdout:
+  type: file
+  file: uninitialized.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

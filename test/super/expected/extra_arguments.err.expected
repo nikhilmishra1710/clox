@@ -1,0 +1,3 @@
+Expected 2 arguments but got 4.
+[line 10] in foo()
+[line 14] in script

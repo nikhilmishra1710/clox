@@ -1,0 +1,18 @@
+id: CLOX-2414
+
+name: variable
+input:
+  type: file
+  file: undefined_global.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: undefined_global.err.expected
+
+expected_ec: 70
+
+timeout: 10

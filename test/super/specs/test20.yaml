@@ -1,0 +1,18 @@
+id: CLOX-2220
+
+name: super
+input:
+  type: file
+  file: this_in_superclass_method.lox
+
+expected_stdout:
+  type: file
+  file: this_in_superclass_method.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

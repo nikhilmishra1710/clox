@@ -1,0 +1,18 @@
+id: CLOX-2007
+
+name: return
+input:
+  type: file
+  file: return_nil_if_no_value.lox
+
+expected_stdout:
+  type: file
+  file: return_nil_if_no_value.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

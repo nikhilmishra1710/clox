@@ -1,0 +1,18 @@
+id: CLOX-2207
+
+name: super
+input:
+  type: file
+  file: indirectly_inherited.lox
+
+expected_stdout:
+  type: file
+  file: indirectly_inherited.out.expected
+
+expected_stderr:
+  type: inline
+  file: 
+
+expected_ec: 0
+
+timeout: 10

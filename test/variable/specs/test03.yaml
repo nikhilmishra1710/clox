@@ -1,0 +1,18 @@
+id: CLOX-2403
+
+name: variable
+input:
+  type: file
+  file: duplicate_parameter.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: duplicate_parameter.err.expected
+
+expected_ec: 65
+
+timeout: 10

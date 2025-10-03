@@ -1,0 +1,18 @@
+id: CLOX-2421
+
+name: variable
+input:
+  type: file
+  file: use_nil_as_var.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: use_nil_as_var.err.expected
+
+expected_ec: 65
+
+timeout: 10

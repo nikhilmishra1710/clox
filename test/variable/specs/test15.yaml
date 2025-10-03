@@ -1,0 +1,18 @@
+id: CLOX-2415
+
+name: variable
+input:
+  type: file
+  file: undefined_local.lox
+
+expected_stdout:
+  type: inline
+  file: 
+
+expected_stderr:
+  type: file
+  file: undefined_local.err.expected
+
+expected_ec: 70
+
+timeout: 10
