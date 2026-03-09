@@ -40,6 +40,7 @@ typedef enum { INTERPRET_OK, INTERPRET_COMPILE_ERROR, INTERPRET_RUNTIME_ERROR } 
 
 void initVM(void);
 void freeVM(void);
+void runtimeError(const char* format, ...);
 InterpretResult interpret(const char* source);
 void push(Value value);
 Value pop(void);

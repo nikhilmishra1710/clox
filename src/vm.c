@@ -41,12 +41,16 @@ static char* getType(Value value) {
             return "instance";
         case OBJ_BOUND_METHOD:
             return "method";
+        case OBJ_NATIVE_CLASS:
+            return "native class";
+        case OBJ_NATIVE_INSTANCE:
+            return "native instance";
         }
     }
     return "unknown";
 }
 
-static void runtimeError(const char* format, ...) {
+void runtimeError(const char* format, ...) {
     va_list args;
     va_start(args, format);
     vfprintf(stderr, format, args);
@@ -75,6 +79,17 @@ static void defineNative(const char* name, NativeFn function, int arity) {
     pop();
 }
 
+static void defineNativeClass(ObjNativeClass* klass) {
+    klass->obj.type = OBJ_NATIVE_CLASS;
+    klass->obj.isMarked = true; // always marked — GC never frees static memory
+    klass->obj.next = NULL;
+    push(OBJ_VAL(copyString(klass->name, (int) strlen(klass->name))));
+    push(OBJ_VAL((Obj*) klass));
+    tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
+    pop();
+    pop();
+}
+
 void initVM(void) {
     resetStack();
     vm.objects = NULL;
@@ -89,6 +104,8 @@ void initVM(void) {
     vm.initString = copyString("init", 4);
 
     defineNative("clock", clockNative, 0);
+    defineNative("input", inputNative, -1);
+    defineNativeClass(&fileClass);
 }
 
 void freeVM(void) {
@@ -153,7 +170,7 @@ static bool callValue(Value callee, int argCount) {
         }
         case OBJ_NATIVE: {
             ObjNative* native = AS_NATIVE(callee);
-            if (native->arity != argCount) {
+            if (native->arity != -1 && native->arity != argCount) {
                 runtimeError("Expected %d arguments but got %d.", native->arity, argCount);
                 return false;
             }
@@ -164,6 +181,20 @@ static bool callValue(Value callee, int argCount) {
             }
             vm.stackTop -= argCount + 1;
             push(result);
+            return true;
+        }
+        case OBJ_NATIVE_CLASS: {
+            ObjNativeClass* nklass = (ObjNativeClass*) AS_OBJ(callee);
+            if (nklass->arity != -1 && nklass->arity != argCount) {
+                runtimeError("Expected %d arguments but got %d.", nklass->arity, argCount);
+                return false;
+            }
+            void* data = nklass->constructor(argCount, vm.stackTop - argCount);
+            if (!data)
+                return false; // constructor called runtimeError
+            ObjNativeInstance* inst = newNativeInstance(nklass, data);
+            vm.stackTop -= argCount + 1;
+            push(OBJ_VAL(inst));
             return true;
         }
         default:
@@ -185,6 +216,24 @@ static bool invokeFromClass(ObjClass* klass, ObjString* name, int argCount) {
 
 static bool invoke(ObjString* name, int argCount) {
     Value receiver = peek(argCount);
+
+    if (IS_NATIVE_INSTANCE(receiver)) {
+        ObjNativeInstance* ni = AS_NATIVE_INSTANCE(receiver);
+        for (const NativeMethod* m = ni->klass->methods; m && m->name; m++) {
+            if (strcmp(m->name, name->chars) == 0) {
+                Value result;
+                bool error = m->fn(ni->data, argCount, vm.stackTop - argCount, &result);
+                if (error)
+                    return false;
+                vm.stackTop -= argCount + 1;
+                push(result);
+                return true;
+            }
+        }
+        runtimeError("Undefined method '%s' on %s.", name->chars, ni->klass->name);
+        return false;
+    }
+
     if (!IS_INSTANCE(receiver)) {
         runtimeError("Only instances have methods.");
         return false;
@@ -358,7 +407,7 @@ static InterpretResult run(void) {
                 return INTERPRET_RUNTIME_ERROR;
             }
             break;
-        }        
+        }
         case OP_GET_UPVALUE: {
             uint8_t slot = READ_BYTE();
             push(*frame->closure->upvalues[slot]->location);
@@ -385,7 +434,7 @@ static InterpretResult run(void) {
             }
             if (!bindMethod(instance->klass, name)) {
                 return INTERPRET_RUNTIME_ERROR;
-            }            
+            }
             break;
         }
         case OP_SET_PROPERTY: {

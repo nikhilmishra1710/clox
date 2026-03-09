@@ -32,6 +32,13 @@ ObjClass* newClass(ObjString* name) {
     return klass;
 }
 
+ObjNativeInstance* newNativeInstance(ObjNativeClass* klass, void* data) {
+    ObjNativeInstance* instance = ALLOCATE_OBJ(ObjNativeInstance, OBJ_NATIVE_INSTANCE);
+    instance->klass = klass;
+    instance->data  = data;
+    return instance;
+}
+
 ObjClosure* newClosure(ObjFunction* function) {
     ObjUpvalue** upvalues = ALLOCATE(ObjUpvalue*, function->upvalueCount);
     for (int i = 0; i < function->upvalueCount; i++) {
@@ -157,6 +164,14 @@ void printObject(Value value) {
     }
     case OBJ_BOUND_METHOD: {
         printFunction(AS_BOUND_METHOD(value)->method->function);
+        break;
+    }
+    case OBJ_NATIVE_CLASS: {
+        printf("<native class %s>", AS_NATIVE_CLASS(value)->name);
+        break;
+    }
+    case OBJ_NATIVE_INSTANCE: {
+        printf("<native instance of %s>", AS_NATIVE_INSTANCE(value)->klass->name);
         break;
     }
     }
