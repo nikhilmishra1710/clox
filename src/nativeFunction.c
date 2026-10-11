@@ -1,4 +1,5 @@
 #include "include/nativeFunction.h"
+#include "include/object.h"
 #include "include/vm.h"
 #include "time.h"
 
@@ -19,7 +20,11 @@ bool clockNative(int argCount, Value* args, Value* result) {
 bool inputNative(int argCount, Value* args, Value* result) {
     (void) argCount;
     (void) args;
-
+    if (argCount == 1) {
+        if (IS_STRING(args[0])) {
+            printf("%s", AS_CSTRING(args[0]));
+        }
+    }
     char buffer[1024];
     if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
         *result = NIL_VAL;
