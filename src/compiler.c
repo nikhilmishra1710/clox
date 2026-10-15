@@ -602,11 +602,44 @@ static void unary(bool canAssign) {
     }
 }
 
+static void list(bool canAssign) {
+    (void) canAssign;
+    int itemCount = 0;
+    if (!check(TOKEN_RIGHT_SQUARE_BRACE)) {
+        do {
+            if (check(TOKEN_RIGHT_SQUARE_BRACE)) {
+                break; // Allow trailing comma: [1, 2, ]
+            }
+            expression();
+            if (itemCount == 255) {
+                error("Can't have more than 255 items in a list literal.");
+            }
+            itemCount++;
+        } while (match(TOKEN_COMMA));
+    }
+    consume(TOKEN_RIGHT_SQUARE_BRACE, "Expect ']' after list elements.");
+    emitBytes(OP_BUILD_LIST, (uint8_t) itemCount);
+}
+
+static void subscript(bool canAssign) {
+    expression();
+    consume(TOKEN_RIGHT_SQUARE_BRACE, "Expect ']' after index.");
+
+    if (canAssign && match(TOKEN_EQUAL)) {
+        expression();
+        emitByte(OP_INDEX_SET);
+    } else {
+        emitByte(OP_INDEX_GET);
+    }
+}
+
 ParseRule rules[] = {
     [TOKEN_LEFT_PAREN] = {grouping, call, PREC_CALL},
     [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
     [TOKEN_LEFT_BRACE] = {NULL, NULL, PREC_NONE},
     [TOKEN_RIGHT_BRACE] = {NULL, NULL, PREC_NONE},
+    [TOKEN_LEFT_SQUARE_BRACE] = {list, subscript, PREC_CALL},
+    [TOKEN_RIGHT_SQUARE_BRACE] = {NULL, NULL, PREC_NONE},
     [TOKEN_COMMA] = {NULL, NULL, PREC_NONE},
     [TOKEN_DOT] = {NULL, dot, PREC_CALL},
     [TOKEN_MINUS] = {unary, binary, PREC_TERM},

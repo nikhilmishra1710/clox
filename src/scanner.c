@@ -217,6 +217,10 @@ Token scanToken(void) {
         return makeToken(TOKEN_LEFT_PAREN);
     case ')':
         return makeToken(TOKEN_RIGHT_PAREN);
+    case '[':
+        return makeToken(TOKEN_LEFT_SQUARE_BRACE);
+    case ']':
+        return makeToken(TOKEN_RIGHT_SQUARE_BRACE);
     case '{':
         return makeToken(TOKEN_LEFT_BRACE);
     case '}':

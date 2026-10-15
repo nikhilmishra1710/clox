@@ -35,7 +35,7 @@ ObjClass* newClass(ObjString* name) {
 ObjNativeInstance* newNativeInstance(ObjNativeClass* klass, void* data) {
     ObjNativeInstance* instance = ALLOCATE_OBJ(ObjNativeInstance, OBJ_NATIVE_INSTANCE);
     instance->klass = klass;
-    instance->data  = data;
+    instance->data = data;
     return instance;
 }
 
@@ -124,6 +124,12 @@ ObjUpvalue* newUpvalue(Value* slot) {
     return upvalue;
 }
 
+ObjList* newList(void) {
+    ObjList* list = ALLOCATE_OBJ(ObjList, OBJ_LIST);
+    initValueArray(&list->elements);
+    return list;
+}
+
 static void printFunction(ObjFunction* function) {
     if (function->name == NULL) {
         printf("<script>");
@@ -172,6 +178,18 @@ void printObject(Value value) {
     }
     case OBJ_NATIVE_INSTANCE: {
         printf("<native instance of %s>", AS_NATIVE_INSTANCE(value)->klass->name);
+        break;
+    }
+    case OBJ_LIST: {
+        ObjList* list = AS_LIST(value);
+        printf("[");
+        for (int i = 0; i < list->elements.count; i++) {
+            printValue(list->elements.values[i]);
+            if (i < list->elements.count - 1) {
+                printf(", ");
+            }
+        }
+        printf("]");
         break;
     }
     }

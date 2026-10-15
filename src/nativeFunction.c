@@ -168,3 +168,43 @@ ObjNativeClass fileClass = {
     .methods = fileMethods,
     .arity = -1, // variadic: 1 or 2 args
 };
+
+static bool listPush(void* data, int argCount, Value* args, Value* result) {
+    ObjList* list = (ObjList*) data;
+    if (argCount != 1) {
+        runtimeError("List.push() expects 1 argument but got %d.", argCount);
+        return true;
+    }
+    writeValueArray(&list->elements, args[0]);
+    *result = NIL_VAL;
+    return false;
+}
+
+static bool listPop(void* data, int argCount, Value* args, Value* result) {
+    (void) args;
+    ObjList* list = (ObjList*) data;
+    if (argCount != 0) {
+        runtimeError("List.pop() expects 0 arguments but got %d.", argCount);
+        return true;
+    }
+    if (list->elements.count == 0) {
+        runtimeError("List.pop(): cannot pop from an empty list.");
+        return true;
+    }
+    *result = list->elements.values[--list->elements.count];
+    return false;
+}
+
+static bool listLen(void* data, int argCount, Value* args, Value* result) {
+    (void) args;
+    ObjList* list = (ObjList*) data;
+    if (argCount != 0) {
+        runtimeError("List.len() expects 0 arguments but got %d.", argCount);
+        return true;
+    }
+    *result = NUMBER_VAL((double) list->elements.count);
+    return false;
+}
+
+const NativeMethod listMethods[] = {
+    {"push", listPush}, {"pop", listPop}, {"len", listLen}, {NULL, NULL}};

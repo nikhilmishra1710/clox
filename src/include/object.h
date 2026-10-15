@@ -17,6 +17,7 @@
 #define IS_STRING(value) isObjType(value, OBJ_STRING)
 #define IS_NATIVE_CLASS(value) isObjType(value, OBJ_NATIVE_CLASS)
 #define IS_NATIVE_INSTANCE(value) isObjType(value, OBJ_NATIVE_INSTANCE)
+#define IS_LIST(value) isObjType(value, OBJ_LIST)
 
 #define AS_BOUND_METHOD(value) ((ObjBoundMethod*) AS_OBJ(value))
 #define AS_CLASS(value) ((ObjClass*) AS_OBJ(value))
@@ -28,6 +29,7 @@
 #define AS_CSTRING(value) (((ObjString*) AS_OBJ(value))->chars)
 #define AS_NATIVE_CLASS(value) ((ObjNativeClass*) AS_OBJ(value))
 #define AS_NATIVE_INSTANCE(value) ((ObjNativeInstance*) AS_OBJ(value))
+#define AS_LIST(value) ((ObjList*) AS_OBJ(value))
 
 typedef enum {
     OBJ_BOUND_METHOD,
@@ -39,7 +41,8 @@ typedef enum {
     OBJ_NATIVE,
     OBJ_UPVALUE,
     OBJ_NATIVE_CLASS,
-    OBJ_NATIVE_INSTANCE
+    OBJ_NATIVE_INSTANCE,
+    OBJ_LIST
 } ObjType;
 
 struct Obj {
@@ -103,20 +106,28 @@ typedef struct {
     ObjClosure* method;
 } ObjBoundMethod;
 
+typedef struct {
+    Obj obj;
+    ValueArray elements;
+} ObjList;
+
 // Method fn: data=C resource, return false=ok, return true=error
 typedef bool (*NativeMethodFn)(void* data, int argCount, Value* args, Value* result);
 typedef void* (*NativeConstructorFn)(int argCount, Value* args);
-typedef void  (*NativeFinalizerFn)(void* data);
-
-typedef struct { const char* name; NativeMethodFn fn; } NativeMethod;
+typedef void (*NativeFinalizerFn)(void* data);
 
 typedef struct {
-    Obj                  obj;         // GC header — MUST be first; init'd by defineNativeClass()
-    const char*          name;
-    NativeConstructorFn  constructor;
-    NativeFinalizerFn    finalizer;   // may be NULL
-    const NativeMethod*  methods;     // NULL-terminated array
-    int                  arity;       // -1 = variadic
+    const char* name;
+    NativeMethodFn fn;
+} NativeMethod;
+
+typedef struct {
+    Obj obj; // GC header — MUST be first; init'd by defineNativeClass()
+    const char* name;
+    NativeConstructorFn constructor;
+    NativeFinalizerFn finalizer; // may be NULL
+    const NativeMethod* methods; // NULL-terminated array
+    int arity;                   // -1 = variadic
 } ObjNativeClass;
 
 typedef struct {
@@ -124,7 +135,6 @@ typedef struct {
     ObjNativeClass* klass;
     void* data;
 } ObjNativeInstance;
-
 
 ObjBoundMethod* newBoundMethod(Value receiver, ObjClosure* method);
 ObjClass* newClass(ObjString* name);
@@ -136,6 +146,7 @@ ObjNative* newNative(NativeFn function, int arity);
 ObjString* takeString(char* chars, int length);
 ObjString* copyString(const char* chars, int length);
 ObjUpvalue* newUpvalue(Value* slot);
+ObjList* newList(void);
 void printObject(Value value);
 
 static inline bool isObjType(Value value, ObjType type) {

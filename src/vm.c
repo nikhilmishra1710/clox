@@ -45,6 +45,8 @@ static char* getType(Value value) {
             return "native class";
         case OBJ_NATIVE_INSTANCE:
             return "native instance";
+        case OBJ_LIST:
+            return "list";
         }
     }
     return "unknown";
@@ -231,6 +233,23 @@ static bool invoke(ObjString* name, int argCount) {
             }
         }
         runtimeError("Undefined method '%s' on %s.", name->chars, ni->klass->name);
+        return false;
+    }
+
+    if (IS_LIST(receiver)) {
+        ObjList* list = AS_LIST(receiver);
+        for (const NativeMethod* m = listMethods; m && m->name; m++) {
+            if (strcmp(m->name, name->chars) == 0) {
+                Value result;
+                bool error = m->fn((void*) list, argCount, vm.stackTop - argCount, &result);
+                if (error)
+                    return false;
+                vm.stackTop -= argCount + 1;
+                push(result);
+                return true;
+            }
+        }
+        runtimeError("Undefined method '%s' on list.", name->chars);
         return false;
     }
 
@@ -617,6 +636,63 @@ static InterpretResult run(void) {
         }
         case OP_METHOD: {
             defineMethod(READ_STRING());
+            break;
+        }
+        case OP_BUILD_LIST: {
+            int itemCount = READ_BYTE();
+            ObjList* list = newList();
+            // Push list onto the stack so DEBUG_STRESS_GC doesn't sweep it during writeValueArray!
+            push(OBJ_VAL(list));
+            for (int i = itemCount; i > 0; i--) {
+                writeValueArray(&list->elements, peek(i));
+            }
+            pop();                    // Pop the temporary list protection slot
+            vm.stackTop -= itemCount; // Pop all elements
+            push(OBJ_VAL(list));
+            break;
+        }
+        case OP_INDEX_GET: {
+            if (!IS_NUMBER(peek(0))) {
+                runtimeError("List index must be a number.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            if (!IS_LIST(peek(1))) {
+                runtimeError("Can only index into lists.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            int index = (int) AS_NUMBER(pop());
+            ObjList* list = AS_LIST(pop());
+
+            if (index < 0)
+                index += list->elements.count; // Optional: supports negative indexing like a[-1]
+            if (index < 0 || index >= list->elements.count) {
+                runtimeError("List index out of bounds.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            push(list->elements.values[index]);
+            break;
+        }
+        case OP_INDEX_SET: {
+            if (!IS_LIST(peek(2))) {
+                runtimeError("Can only subscript assign into lists.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            if (!IS_NUMBER(peek(1))) {
+                runtimeError("List index must be a number.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            Value value = pop();
+            int index = (int) AS_NUMBER(pop());
+            ObjList* list = AS_LIST(pop());
+
+            if (index < 0)
+                index += list->elements.count;
+            if (index < 0 || index >= list->elements.count) {
+                runtimeError("List index out of bounds.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            list->elements.values[index] = value;
+            push(value);
             break;
         }
         }

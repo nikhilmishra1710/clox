@@ -109,6 +109,11 @@ static void blackenObject(Obj* object) {
         markValue(((ObjUpvalue*) object)->closed);
         break;
     }
+    case OBJ_LIST: {
+        ObjList* list = (ObjList*) object;
+        markArray(&list->elements);
+        break;
+    }
     case OBJ_NATIVE:
     case OBJ_STRING:
     case OBJ_NATIVE_CLASS:
@@ -171,6 +176,12 @@ static void freeObject(Obj* object) {
         if (ni->klass->finalizer && ni->data)
             ni->klass->finalizer(ni->data);
         FREE(ObjNativeInstance, object);
+        break;
+    }
+    case OBJ_LIST: {
+        ObjList* list = (ObjList*) object;
+        freeValueArray(&list->elements);
+        FREE(ObjList, object);
         break;
     }
     }
