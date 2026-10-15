@@ -7,3 +7,4 @@ bool inputNative(int argCount, Value* args, Value* result);
 extern ObjNativeClass fileClass;
 extern const NativeMethod listMethods[];
 extern const NativeMethod mapMethods[];
+extern const NativeMethod stringMethods[];

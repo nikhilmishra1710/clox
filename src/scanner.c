@@ -6,6 +6,7 @@ void initScanner(const char* source) {
     scanner.start = source;
     scanner.current = source;
     scanner.line = 1;
+    scanner.interpolationDepth = 0;
 }
 
 static bool isDigit(char c) {
@@ -184,13 +185,22 @@ static Token string(void) {
     while (peek() != '"' && !isAtEnd()) {
         if (peek() == '\n')
             scanner.line++;
+        if (peek() == '$' && peekNext() == '{') {
+            if (scanner.interpolationDepth >= 8) {
+                return errorToken("Too many nested string interpolations.");
+            }
+            scanner.braceDepths[scanner.interpolationDepth++] = 0;
+            advance(); // consume '$'
+            advance(); // consume '{'
+            return makeToken(TOKEN_INTERPOLATION);
+        }
         advance();
     }
 
     if (isAtEnd())
         return errorToken("Unterminated String.");
 
-    advance();
+    advance(); // closing '"'
     return makeToken(TOKEN_STRING);
 }
 
@@ -222,8 +232,18 @@ Token scanToken(void) {
     case ']':
         return makeToken(TOKEN_RIGHT_SQUARE_BRACE);
     case '{':
+        if (scanner.interpolationDepth > 0) {
+            scanner.braceDepths[scanner.interpolationDepth - 1]++;
+        }
         return makeToken(TOKEN_LEFT_BRACE);
     case '}':
+        if (scanner.interpolationDepth > 0) {
+            if (scanner.braceDepths[scanner.interpolationDepth - 1] == 0) {
+                scanner.interpolationDepth--;
+                return string();
+            }
+            scanner.braceDepths[scanner.interpolationDepth - 1]--;
+        }
         return makeToken(TOKEN_RIGHT_BRACE);
     case ';':
         return makeToken(TOKEN_SEMICOLON);

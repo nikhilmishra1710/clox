@@ -216,3 +216,46 @@ void printObject(Value value) {
     }
     }
 }
+
+ObjString* valueToString(Value value) {
+    if (IS_STRING(value)) {
+        return AS_STRING(value);
+    }
+    char buf[128];
+    int len = 0;
+    if (IS_NUMBER(value)) {
+        len = snprintf(buf, sizeof(buf), "%g", AS_NUMBER(value));
+    } else if (IS_BOOL(value)) {
+        len = snprintf(buf, sizeof(buf), "%s", AS_BOOL(value) ? "true" : "false");
+    } else if (IS_NIL(value)) {
+        len = snprintf(buf, sizeof(buf), "nil");
+    } else if (IS_OBJ(value)) {
+        switch (OBJ_TYPE(value)) {
+        case OBJ_CLASS:
+            len = snprintf(buf, sizeof(buf), "<class %s>", AS_CLASS(value)->name->chars);
+            break;
+        case OBJ_INSTANCE:
+            len = snprintf(buf, sizeof(buf), "%s instance", AS_INSTANCE(value)->klass->name->chars);
+            break;
+        case OBJ_FUNCTION: {
+            ObjFunction* fn = AS_FUNCTION(value);
+            len = snprintf(buf, sizeof(buf), fn->name ? "<fn %s>" : "<script>",
+                           fn->name ? fn->name->chars : "");
+            break;
+        }
+        case OBJ_CLOSURE: {
+            ObjFunction* fn = AS_CLOSURE(value)->function;
+            len = snprintf(buf, sizeof(buf), fn->name ? "<fn %s>" : "<script>",
+                           fn->name ? fn->name->chars : "");
+            break;
+        }
+        case OBJ_NATIVE:
+            len = snprintf(buf, sizeof(buf), "<native fn>");
+            break;
+        default:
+            len = snprintf(buf, sizeof(buf), "<object>");
+            break;
+        }
+    }
+    return copyString(buf, len);
+}

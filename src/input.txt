@@ -24,3 +24,17 @@ print user.len();        // 3
 print user.keys();       // [name, role,  status]
 user.remove(" status");
 print user.len();        // 2
+
+var s = "hello world";
+print s.length();         // 11
+print s[0];               // h
+print s[-1];              // d
+var s1 = s[0:5];             // hello
+print s1;
+print s[6:];              // world
+print s[:5];              // hello
+
+var x = 42;
+var items = [1, 2, 3];
+print "x = ${x}, sum = ${x + 8}, first = ${items[0]}";
+// Expect: x = 42, sum = 50, first = 1

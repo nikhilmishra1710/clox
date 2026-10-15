@@ -48,7 +48,9 @@ typedef enum {
     OP_BUILD_LIST,
     OP_BUILD_MAP,
     OP_INDEX_GET,
-    OP_INDEX_SET
+    OP_INDEX_SET,
+    OP_SLICE,
+    OP_TO_STRING
 } OpCode;
 
 typedef struct {

@@ -272,6 +272,23 @@ static bool invoke(ObjString* name, int argCount) {
         return false;
     }
 
+    if (IS_STRING(receiver)) {
+        ObjString* str = AS_STRING(receiver);
+        for (const NativeMethod* m = stringMethods; m && m->name; m++) {
+            if (strcmp(m->name, name->chars) == 0) {
+                Value result;
+                bool error = m->fn((void*) str, argCount, vm.stackTop - argCount, &result);
+                if (error)
+                    return false;
+                vm.stackTop -= argCount + 1;
+                push(result);
+                return true;
+            }
+        }
+        runtimeError("Undefined method '%s' on string.", name->chars);
+        return false;
+    }
+
     if (!IS_INSTANCE(receiver)) {
         runtimeError("Only instances have methods.");
         return false;
@@ -720,6 +737,21 @@ static InterpretResult run(void) {
                 } else {
                     push(value);
                 }
+            } else if (IS_STRING(peek(1))) {
+                if (!IS_NUMBER(peek(0))) {
+                    runtimeError("String index must be a number.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                int index = (int) AS_NUMBER(pop());
+                ObjString* str = AS_STRING(pop());
+
+                if (index < 0)
+                    index += str->length;
+                if (index < 0 || index >= str->length) {
+                    runtimeError("String index out of bounds.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                push(OBJ_VAL(copyString(&str->chars[index], 1)));
             } else {
                 runtimeError("Can only index into lists and maps.");
                 return INTERPRET_RUNTIME_ERROR;
@@ -758,6 +790,81 @@ static InterpretResult run(void) {
                 runtimeError("Can only subscript assign into lists and maps.");
                 return INTERPRET_RUNTIME_ERROR;
             }
+            break;
+        }
+        case OP_SLICE: {
+            Value endVal = peek(0);
+            Value startVal = peek(1);
+            Value target = peek(2);
+
+            if (!IS_NIL(startVal) && !IS_NUMBER(startVal)) {
+                runtimeError("Slice start index must be a number.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            if (!IS_NIL(endVal) && !IS_NUMBER(endVal)) {
+                runtimeError("Slice end index must be a number.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            if (IS_STRING(target)) {
+                ObjString* str = AS_STRING(target);
+                int len = str->length;
+                int start = IS_NIL(startVal) ? 0 : (int) AS_NUMBER(startVal);
+                int end = IS_NIL(endVal) ? len : (int) AS_NUMBER(endVal);
+
+                if (start < 0)
+                    start += len;
+                if (end < 0)
+                    end += len;
+                if (start < 0)
+                    start = 0;
+                if (end > len)
+                    end = len;
+                if (start > end)
+                    start = end;
+
+                ObjString* sliced = copyString(str->chars + start, end - start);
+                pop(); // end
+                pop(); // start
+                pop(); // target
+                push(OBJ_VAL(sliced));
+            } else if (IS_LIST(target)) {
+                ObjList* list = AS_LIST(target);
+                int len = list->elements.count;
+                int start = IS_NIL(startVal) ? 0 : (int) AS_NUMBER(startVal);
+                int end = IS_NIL(endVal) ? len : (int) AS_NUMBER(endVal);
+
+                if (start < 0)
+                    start += len;
+                if (end < 0)
+                    end += len;
+                if (start < 0)
+                    start = 0;
+                if (end > len)
+                    end = len;
+                if (start > end)
+                    start = end;
+
+                ObjList* sliced = newList();
+                push(OBJ_VAL(sliced)); // GC root protection
+                for (int i = start; i < end; i++) {
+                    writeValueArray(&sliced->elements, list->elements.values[i]);
+                }
+                pop(); // sliced
+                pop(); // end
+                pop(); // start
+                pop(); // target
+                push(OBJ_VAL(sliced));
+            } else {
+                runtimeError("Can only slice strings and lists.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            break;
+        }
+        case OP_TO_STRING: {
+            ObjString* str = valueToString(peek(0));
+            pop();
+            push(OBJ_VAL(str));
             break;
         }
         }

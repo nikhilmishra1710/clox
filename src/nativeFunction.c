@@ -268,3 +268,54 @@ static bool mapKeys(void* data, int argCount, Value* args, Value* result) {
 
 const NativeMethod mapMethods[] = {
     {"has", mapHas}, {"remove", mapRemove}, {"len", mapLen}, {"keys", mapKeys}, {NULL, NULL}};
+
+static bool stringLength(void* data, int argCount, Value* args, Value* result) {
+    (void) args;
+    ObjString* str = (ObjString*) data;
+    if (argCount != 0) {
+        runtimeError("String.length() expects 0 arguments.");
+        return true;
+    }
+    *result = NUMBER_VAL((double) str->length);
+    return false;
+}
+
+static bool stringSlice(void* data, int argCount, Value* args, Value* result) {
+    ObjString* str = (ObjString*) data;
+    if (argCount != 2 || !IS_NUMBER(args[0]) || !IS_NUMBER(args[1])) {
+        runtimeError("String.slice(start, end) expects 2 number arguments.");
+        return true;
+    }
+    int start = (int) AS_NUMBER(args[0]);
+    int end = (int) AS_NUMBER(args[1]);
+    if (start < 0)
+        start += str->length;
+    if (end < 0)
+        end += str->length;
+    if (start < 0)
+        start = 0;
+    if (end > str->length)
+        end = str->length;
+    if (start > end)
+        start = end;
+
+    *result = OBJ_VAL(copyString(str->chars + start, end - start));
+    return false;
+}
+
+static bool stringFind(void* data, int argCount, Value* args, Value* result) {
+    ObjString* str = (ObjString*) data;
+    if (argCount != 1 || !IS_STRING(args[0])) {
+        runtimeError("String.find() expects 1 string argument.");
+        return true;
+    }
+    const char* match = strstr(str->chars, AS_CSTRING(args[0]));
+    *result = NUMBER_VAL(match ? (double) (match - str->chars) : -1.0);
+    return false;
+}
+
+const NativeMethod stringMethods[] = {{"length", stringLength},
+                                      {"len", stringLength},
+                                      {"slice", stringSlice},
+                                      {"find", stringFind},
+                                      {NULL, NULL}};

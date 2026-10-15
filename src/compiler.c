@@ -406,7 +406,6 @@ static void ternary(bool canAssign) {
     emitByte(OP_POP);
     expression();
     patchJump(elseJump);
-    printf("parsed ternary expression\n");
 }
 
 static void binary(bool canAssign) {
@@ -622,7 +621,33 @@ static void list(bool canAssign) {
 }
 
 static void subscript(bool canAssign) {
-    expression();
+    if (match(TOKEN_COLON)) {
+        // s[:end] or s[:]
+        emitByte(OP_NIL);
+        if (check(TOKEN_RIGHT_SQUARE_BRACE)) {
+            emitByte(OP_NIL);
+        } else {
+            expression();
+        }
+        consume(TOKEN_RIGHT_SQUARE_BRACE, "Expect ']' after slice.");
+        emitByte(OP_SLICE);
+        return;
+    }
+
+    expression(); // Compile start index
+
+    if (match(TOKEN_COLON)) {
+        // s[start:end] or s[start:]
+        if (check(TOKEN_RIGHT_SQUARE_BRACE)) {
+            emitByte(OP_NIL);
+        } else {
+            expression();
+        }
+        consume(TOKEN_RIGHT_SQUARE_BRACE, "Expect ']' after slice.");
+        emitByte(OP_SLICE);
+        return;
+    }
+
     consume(TOKEN_RIGHT_SQUARE_BRACE, "Expect ']' after index.");
 
     if (canAssign && match(TOKEN_EQUAL)) {
@@ -655,6 +680,28 @@ static void map(bool canAssign) {
     emitBytes(OP_BUILD_MAP, (uint8_t) entryCount);
 }
 
+static void interpolation(bool canAssign) {
+    (void) canAssign;
+    int count = 0;
+    do {
+        // Strip leading '"' or '}' (1 char) and trailing "${" (2 chars) => length - 3
+        emitConstant(OBJ_VAL(copyString(parser.previous.start + 1, parser.previous.length - 3)));
+        if (count > 0) {
+            emitByte(OP_ADD);
+        }
+
+        expression(); // Compile the expression inside ${...}
+        emitByte(OP_TO_STRING);
+        emitByte(OP_ADD);
+        count++;
+    } while (match(TOKEN_INTERPOLATION));
+
+    consume(TOKEN_STRING, "Expect end of string interpolation.");
+    // Strip leading '}' (1 char) and trailing '"' (1 char) => length - 2
+    emitConstant(OBJ_VAL(copyString(parser.previous.start + 1, parser.previous.length - 2)));
+    emitByte(OP_ADD);
+}
+
 ParseRule rules[] = {
     [TOKEN_LEFT_PAREN] = {grouping, call, PREC_CALL},
     [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
@@ -680,6 +727,7 @@ ParseRule rules[] = {
     [TOKEN_LESS_EQUAL] = {NULL, binary, PREC_COMPARISON},
     [TOKEN_IDENTIFIER] = {variable, NULL, PREC_NONE},
     [TOKEN_STRING] = {string, NULL, PREC_NONE},
+    [TOKEN_INTERPOLATION] = {interpolation, NULL, PREC_NONE},
     [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
     [TOKEN_AND] = {NULL, and_, PREC_AND},
     [TOKEN_CLASS] = {NULL, NULL, PREC_NONE},

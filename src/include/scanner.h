@@ -7,6 +7,8 @@ typedef struct {
     const char* start;
     const char* current;
     int line;
+    int interpolationDepth;
+    int braceDepths[8];
 } Scanner;
 
 typedef enum {
@@ -59,6 +61,8 @@ typedef enum {
     TOKEN_SWITCH,
     TOKEN_CASE,
     TOKEN_DEFAULT,
+    // Special tokens
+    TOKEN_INTERPOLATION,
     // EOF and error
     TOKEN_ERROR,
     TOKEN_EOF
