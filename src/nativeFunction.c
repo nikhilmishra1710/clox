@@ -208,3 +208,63 @@ static bool listLen(void* data, int argCount, Value* args, Value* result) {
 
 const NativeMethod listMethods[] = {
     {"push", listPush}, {"pop", listPop}, {"len", listLen}, {NULL, NULL}};
+
+static bool mapHas(void* data, int argCount, Value* args, Value* result) {
+    ObjMap* map = (ObjMap*) data;
+    if (argCount != 1 || !IS_STRING(args[0])) {
+        runtimeError("Map.has() expects 1 string key argument.");
+        return true;
+    }
+    Value dummy;
+    *result = BOOL_VAL(tableGet(&map->items, AS_STRING(args[0]), &dummy));
+    return false;
+}
+
+static bool mapRemove(void* data, int argCount, Value* args, Value* result) {
+    ObjMap* map = (ObjMap*) data;
+    if (argCount != 1 || !IS_STRING(args[0])) {
+        runtimeError("Map.remove() expects 1 string key argument.");
+        return true;
+    }
+    *result = BOOL_VAL(tableDelete(&map->items, AS_STRING(args[0])));
+    return false;
+}
+
+static bool mapLen(void* data, int argCount, Value* args, Value* result) {
+    (void) args;
+    ObjMap* map = (ObjMap*) data;
+    if (argCount != 0) {
+        runtimeError("Map.len() expects 0 arguments.");
+        return true;
+    }
+    int activeCount = 0;
+    for (int i = 0; i < map->items.capacity; i++) {
+        if (map->items.entries[i].key != NULL) {
+            activeCount++;
+        }
+    }
+    *result = NUMBER_VAL((double) activeCount);
+    return false;
+}
+
+static bool mapKeys(void* data, int argCount, Value* args, Value* result) {
+    (void) args;
+    ObjMap* map = (ObjMap*) data;
+    if (argCount != 0) {
+        runtimeError("Map.keys() expects 0 arguments.");
+        return true;
+    }
+    ObjList* keys = newList();
+    push(OBJ_VAL(keys)); // GC root protection while growing list
+    for (int i = 0; i < map->items.capacity; i++) {
+        if (map->items.entries[i].key != NULL) {
+            writeValueArray(&keys->elements, OBJ_VAL(map->items.entries[i].key));
+        }
+    }
+    pop();
+    *result = OBJ_VAL(keys);
+    return false;
+}
+
+const NativeMethod mapMethods[] = {
+    {"has", mapHas}, {"remove", mapRemove}, {"len", mapLen}, {"keys", mapKeys}, {NULL, NULL}};

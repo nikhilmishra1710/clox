@@ -1,6 +1,7 @@
 #include "include/memory.h"
 #include "include/compiler.h"
 #include "include/object.h"
+#include "include/table.h"
 #include "include/value.h"
 #include "include/vm.h"
 
@@ -114,6 +115,11 @@ static void blackenObject(Obj* object) {
         markArray(&list->elements);
         break;
     }
+    case OBJ_MAP: {
+        ObjMap* map = (ObjMap*) object;
+        markTable(&map->items);
+        break;
+    }
     case OBJ_NATIVE:
     case OBJ_STRING:
     case OBJ_NATIVE_CLASS:
@@ -182,6 +188,12 @@ static void freeObject(Obj* object) {
         ObjList* list = (ObjList*) object;
         freeValueArray(&list->elements);
         FREE(ObjList, object);
+        break;
+    }
+    case OBJ_MAP: {
+        ObjMap* map = (ObjMap*) object;
+        freeTable(&map->items);
+        FREE(ObjMap, object);
         break;
     }
     }

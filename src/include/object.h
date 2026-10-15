@@ -18,6 +18,7 @@
 #define IS_NATIVE_CLASS(value) isObjType(value, OBJ_NATIVE_CLASS)
 #define IS_NATIVE_INSTANCE(value) isObjType(value, OBJ_NATIVE_INSTANCE)
 #define IS_LIST(value) isObjType(value, OBJ_LIST)
+#define IS_MAP(value) isObjType(value, OBJ_MAP)
 
 #define AS_BOUND_METHOD(value) ((ObjBoundMethod*) AS_OBJ(value))
 #define AS_CLASS(value) ((ObjClass*) AS_OBJ(value))
@@ -30,6 +31,7 @@
 #define AS_NATIVE_CLASS(value) ((ObjNativeClass*) AS_OBJ(value))
 #define AS_NATIVE_INSTANCE(value) ((ObjNativeInstance*) AS_OBJ(value))
 #define AS_LIST(value) ((ObjList*) AS_OBJ(value))
+#define AS_MAP(value) ((ObjMap*) AS_OBJ(value))
 
 typedef enum {
     OBJ_BOUND_METHOD,
@@ -42,7 +44,8 @@ typedef enum {
     OBJ_UPVALUE,
     OBJ_NATIVE_CLASS,
     OBJ_NATIVE_INSTANCE,
-    OBJ_LIST
+    OBJ_LIST,
+    OBJ_MAP
 } ObjType;
 
 struct Obj {
@@ -111,6 +114,11 @@ typedef struct {
     ValueArray elements;
 } ObjList;
 
+typedef struct {
+    Obj obj;
+    Table items;
+} ObjMap;
+
 // Method fn: data=C resource, return false=ok, return true=error
 typedef bool (*NativeMethodFn)(void* data, int argCount, Value* args, Value* result);
 typedef void* (*NativeConstructorFn)(int argCount, Value* args);
@@ -147,6 +155,7 @@ ObjString* takeString(char* chars, int length);
 ObjString* copyString(const char* chars, int length);
 ObjUpvalue* newUpvalue(Value* slot);
 ObjList* newList(void);
+ObjMap* newMap(void);
 void printObject(Value value);
 
 static inline bool isObjType(Value value, ObjType type) {

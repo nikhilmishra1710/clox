@@ -633,10 +633,32 @@ static void subscript(bool canAssign) {
     }
 }
 
+static void map(bool canAssign) {
+    (void) canAssign;
+    int entryCount = 0;
+    if (!check(TOKEN_RIGHT_BRACE)) {
+        do {
+            if (check(TOKEN_RIGHT_BRACE)) {
+                break; // Allow trailing comma: {"a": 1, }
+            }
+            expression(); // Compile key
+            consume(TOKEN_COLON, "Expect ':' after map key.");
+            expression(); // Compile value
+
+            if (entryCount == 127) {
+                error("Can't have more than 127 key-value pairs in a map literal.");
+            }
+            entryCount++;
+        } while (match(TOKEN_COMMA));
+    }
+    consume(TOKEN_RIGHT_BRACE, "Expect '}' after map elements.");
+    emitBytes(OP_BUILD_MAP, (uint8_t) entryCount);
+}
+
 ParseRule rules[] = {
     [TOKEN_LEFT_PAREN] = {grouping, call, PREC_CALL},
     [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
-    [TOKEN_LEFT_BRACE] = {NULL, NULL, PREC_NONE},
+    [TOKEN_LEFT_BRACE] = {map, NULL, PREC_NONE},
     [TOKEN_RIGHT_BRACE] = {NULL, NULL, PREC_NONE},
     [TOKEN_LEFT_SQUARE_BRACE] = {list, subscript, PREC_CALL},
     [TOKEN_RIGHT_SQUARE_BRACE] = {NULL, NULL, PREC_NONE},

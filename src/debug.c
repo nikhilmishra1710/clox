@@ -160,6 +160,8 @@ int disassembleInstruction(Chunk* chunk, int offset) {
         return simpleInstruction("OP_INHERIT", offset);
     case OP_BUILD_LIST:
         return byteInstruction("OP_BUILD_LIST", chunk, offset);
+    case OP_BUILD_MAP:
+        return byteInstruction("OP_BUILD_MAP", chunk, offset);
     case OP_INDEX_GET:
         return simpleInstruction("OP_INDEX_GET", offset);
     case OP_INDEX_SET:

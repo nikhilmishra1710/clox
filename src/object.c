@@ -130,6 +130,12 @@ ObjList* newList(void) {
     return list;
 }
 
+ObjMap* newMap(void) {
+    ObjMap* map = ALLOCATE_OBJ(ObjMap, OBJ_MAP);
+    initTable(&map->items);
+    return map;
+}
+
 static void printFunction(ObjFunction* function) {
     if (function->name == NULL) {
         printf("<script>");
@@ -191,6 +197,22 @@ void printObject(Value value) {
         }
         printf("]");
         break;
+    }
+    case OBJ_MAP: {
+        ObjMap* map = AS_MAP(value);
+        printf("{");
+        bool first = true;
+        for (int i = 0; i < map->items.capacity; i++) {
+            Entry* entry = &map->items.entries[i];
+            if (entry->key == NULL)
+                continue;
+            if (!first)
+                printf(", ");
+            printf("\"%s\": ", entry->key->chars);
+            printValue(entry->value);
+            first = false;
+        }
+        printf("}");
     }
     }
 }

@@ -47,6 +47,8 @@ static char* getType(Value value) {
             return "native instance";
         case OBJ_LIST:
             return "list";
+        case OBJ_MAP:
+            return "map";
         }
     }
     return "unknown";
@@ -250,6 +252,23 @@ static bool invoke(ObjString* name, int argCount) {
             }
         }
         runtimeError("Undefined method '%s' on list.", name->chars);
+        return false;
+    }
+
+    if (IS_MAP(receiver)) {
+        ObjMap* map = AS_MAP(receiver);
+        for (const NativeMethod* m = mapMethods; m && m->name; m++) {
+            if (strcmp(m->name, name->chars) == 0) {
+                Value result;
+                bool error = m->fn((void*) map, argCount, vm.stackTop - argCount, &result);
+                if (error)
+                    return false;
+                vm.stackTop -= argCount + 1;
+                push(result);
+                return true;
+            }
+        }
+        runtimeError("Undefined method '%s' on map.", name->chars);
         return false;
     }
 
@@ -651,48 +670,94 @@ static InterpretResult run(void) {
             push(OBJ_VAL(list));
             break;
         }
-        case OP_INDEX_GET: {
-            if (!IS_NUMBER(peek(0))) {
-                runtimeError("List index must be a number.");
-                return INTERPRET_RUNTIME_ERROR;
-            }
-            if (!IS_LIST(peek(1))) {
-                runtimeError("Can only index into lists.");
-                return INTERPRET_RUNTIME_ERROR;
-            }
-            int index = (int) AS_NUMBER(pop());
-            ObjList* list = AS_LIST(pop());
+        case OP_BUILD_MAP: {
+            int entryCount = READ_BYTE();
+            ObjMap* map = newMap();
+            push(OBJ_VAL(map)); // Protect map from GC during tableSet!
 
-            if (index < 0)
-                index += list->elements.count; // Optional: supports negative indexing like a[-1]
-            if (index < 0 || index >= list->elements.count) {
-                runtimeError("List index out of bounds.");
+            // Stack layout: [ ..., key_1, val_1, ..., key_n, val_n, map ]
+            for (int i = entryCount; i > 0; i--) {
+                Value key = peek(i * 2);
+                Value val = peek(i * 2 - 1);
+                if (!IS_STRING(key)) {
+                    runtimeError("Map key must be a string, got %s.", getType(key));
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                tableSet(&map->items, AS_STRING(key), val);
+            }
+
+            pop();                         // Pop temporary map slot
+            vm.stackTop -= entryCount * 2; // Pop all keys and values
+            push(OBJ_VAL(map));
+            break;
+        }
+        case OP_INDEX_GET: {
+            if (IS_LIST(peek(1))) {
+                if (!IS_NUMBER(peek(0))) {
+                    runtimeError("List index must be a number.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                int index = (int) AS_NUMBER(pop());
+                ObjList* list = AS_LIST(pop());
+
+                if (index < 0)
+                    index += list->elements.count;
+                if (index < 0 || index >= list->elements.count) {
+                    runtimeError("List index out of bounds.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                push(list->elements.values[index]);
+            } else if (IS_MAP(peek(1))) {
+                if (!IS_STRING(peek(0))) {
+                    runtimeError("Map key must be a string.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                ObjString* key = AS_STRING(pop());
+                ObjMap* map = AS_MAP(pop());
+                Value value;
+                if (!tableGet(&map->items, key, &value)) {
+                    push(NIL_VAL); // Or runtimeError if you prefer strict key lookups
+                } else {
+                    push(value);
+                }
+            } else {
+                runtimeError("Can only index into lists and maps.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            push(list->elements.values[index]);
             break;
         }
         case OP_INDEX_SET: {
-            if (!IS_LIST(peek(2))) {
-                runtimeError("Can only subscript assign into lists.");
-                return INTERPRET_RUNTIME_ERROR;
-            }
-            if (!IS_NUMBER(peek(1))) {
-                runtimeError("List index must be a number.");
-                return INTERPRET_RUNTIME_ERROR;
-            }
-            Value value = pop();
-            int index = (int) AS_NUMBER(pop());
-            ObjList* list = AS_LIST(pop());
+            if (IS_LIST(peek(2))) {
+                if (!IS_NUMBER(peek(1))) {
+                    runtimeError("List index must be a number.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                Value value = pop();
+                int index = (int) AS_NUMBER(pop());
+                ObjList* list = AS_LIST(pop());
 
-            if (index < 0)
-                index += list->elements.count;
-            if (index < 0 || index >= list->elements.count) {
-                runtimeError("List index out of bounds.");
+                if (index < 0)
+                    index += list->elements.count;
+                if (index < 0 || index >= list->elements.count) {
+                    runtimeError("List index out of bounds.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                list->elements.values[index] = value;
+                push(value);
+            } else if (IS_MAP(peek(2))) {
+                if (!IS_STRING(peek(1))) {
+                    runtimeError("Map key must be a string.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                Value value = pop();
+                ObjString* key = AS_STRING(pop());
+                ObjMap* map = AS_MAP(pop());
+                tableSet(&map->items, key, value);
+                push(value);
+            } else {
+                runtimeError("Can only subscript assign into lists and maps.");
                 return INTERPRET_RUNTIME_ERROR;
             }
-            list->elements.values[index] = value;
-            push(value);
             break;
         }
         }

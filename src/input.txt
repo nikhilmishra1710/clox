@@ -6,3 +6,21 @@ a.push(40);
 print a;          // Expect: [10, 99, 30, 40]
 print a.pop();    // Expect: 40
 print a.len();    // Expect: 3
+
+var user = {
+    "name": "Alice",
+    "role": "admin"
+};
+
+print user;              // {"name": Alice, "role": admin}
+print user["name"];      // Alice
+print user["missing"];   // nil
+
+user["role"] = "owner";
+user[" status"] = "active";
+
+print user.has("name");  // true
+print user.len();        // 3
+print user.keys();       // [name, role,  status]
+user.remove(" status");
+print user.len();        // 2

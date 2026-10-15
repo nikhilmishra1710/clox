@@ -46,6 +46,7 @@ typedef enum {
     OP_INHERIT,
     OP_GET_SUPER,
     OP_BUILD_LIST,
+    OP_BUILD_MAP,
     OP_INDEX_GET,
     OP_INDEX_SET
 } OpCode;

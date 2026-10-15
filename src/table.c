@@ -35,9 +35,6 @@ static Entry* findEntry(Entry* entries, int capacity, ObjString* key) {
             // We found the key.
             return entry;
         }
-        if (entry->key == key || entry->key == NULL) {
-            return entry;
-        }
 
         index = (index + 1) & ((uint32_t) capacity - 1);
     }
@@ -134,8 +131,6 @@ bool tableSet(Table* table, ObjString* key, Value value) {
     Entry* entry = findEntry(table->entries, table->capacity, key);
     bool isNewKey = entry->key == NULL;
     if (isNewKey && IS_NIL(entry->value))
-        table->count++;
-    if (!isNewKey)
         table->count++;
 
     entry->key = key;
