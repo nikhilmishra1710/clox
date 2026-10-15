@@ -1,48 +1,138 @@
-Language features to implement
+# clox Roadmap & Issue Tracker
 
-High impact / most natural next steps
-1. Lists (arrays) — the biggest gap. var a = [1, 2, 3];, indexing a[0], a[0] = x, methods like push/pop/len. Needs OBJ_LIST, OP_BUILD_LIST, OP_INDEX_GET/SET. Your native-class machinery makes the methods easy.
-2. Maps/dictionaries — you already have a hash table in C (table.c); exposing it as {"key": value} is mostly parser + a new object type.
-3. String operations — s.length(), s[i], slicing, and string interpolation ("x = ${x}").
-4. break / continue — no tokens for them yet. Doable with jump patching in the loop compilers, and would make switch more conventional too.
-5. Compound assignment & inc/dec — +=, -=, *=, /=, ++, --. Pure compiler sugar.
-6. % and bitwise operators — & | ^ << >> ~. One opcode + one parse-rule row each.
+## Section 1: Features
 
-Medium effort, big expressiveness
-7. Anonymous functions / lambdas — var f = fun (a, b) { return a + b; };
-8. Exceptions — try/catch/throw with stack unwinding in vm.c.
-9. Modules — import "foo.lox" with per-module globals.
-10. Static methods & getters on classes.
-11. Default & variadic parameters for user functions (your natives already support variadic via arity = -1).
-12. Block comments /* ... */ — scanner only handles // right now.
+### High Impact / Core Next Steps
 
-Ambitious / fun
-13. Iterators & for x in list loops, ranges (1..10).
-14. A real standard library — math (sqrt, floor, sin…), string, os/env, time, built on your ObjNativeClass bridge.
-15. Operator overloading via metamethods (__add, __index, Lua-style) for classes.
-16. Integer type distinct from doubles, UTF-8-aware strings.
+1. **Lists / Dynamic Arrays** (`var a = [1, 2, 3];`, indexing `a[0]`, `a[0] = x`, methods `push`/`pop`/`len` via `OBJ_LIST`, `OP_BUILD_LIST`, `OP_INDEX_GET/SET`)
+   - [ ] Implementation
+   - [ ] Basic sanity
+   - [ ] Add test cases in `test/list/` folder
 
-Improvements to the current implementation
+2. **Maps / Dictionaries** (Expose `table.c` as `{"key": value}` literals via `OBJ_MAP`, `OP_BUILD_MAP`, and `OP_INDEX_GET/SET`, plus `has`/`remove`/`keys`/`len` methods)
+   - [ ] Implementation
+   - [ ] Basic sanity
+   - [ ] Add test cases in `test/map/` folder
 
-Actual bugs / cleanups
-- compiler.c:409 — leftover printf("parsed ternary expression\n") debug print fires on every ternary. Remove it.
-- nativeFunction.c:93 — fileRead builds the string with length sz (from ftell) instead of nread (actual bytes read). If fread returns short, the string contains uninitialized bytes. Use nread.
-- fileReadline keeps the trailing \n in the returned string while input() strips it — inconsistent; pick one.
-- fileClose (nativeFunction.c:131-146) reaches through args[-1] to null the receiver's data — the comment itself admits it's a hack. Pass the receiver explicitly to native methods instead.
-- input() silently truncates lines longer than 1024 chars — loop on fgets or use getline.
+3. **String Operations & Interpolation** (`s.length()`, `s[i]`, slicing `s[a:b]`, escape sequences `\n`/`\t`/`\"`, and `"x = ${x}"` string interpolation)
+   - [ ] Implementation
+   - [ ] Basic sanity
+   - [ ] Add test cases in `test/string/` folder
 
-Robustness
-- GC gray-stack: make sure it grows dynamically under deep object graphs (book uses realloc — verify yours handles overflow).
-- Add GC stress tests (DEBUG_STRESS_GC builds) and error-path tests to test/ — you have feature tests, fewer failure-mode ones.
-- Consider -Wall -Wextra -Wpedantic in the Makefile (with -Werror in CI) if not already there.
+4. **Loop & Switch Control Flow (`break` / `continue`)** (Jump patching in loop/switch compilers and `fallthrough`/break semantics in `switch`)
+   - [ ] Implementation
+   - [ ] Basic sanity
+   - [ ] Add test cases in `test/for/`, `test/while/`, and `test/switch/` folders
 
-Performance
-- Inline caching for OP_GET_PROPERTY / OP_INVOKE — biggest realistic win for method-heavy code.
-- Superinstructions — fuse common pairs (OP_GET_LOCAL + OP_ADD, comparison + OP_JUMP_IF_FALSE).
-- Computed-goto dispatch instead of the switch in the interpreter loop (GCC/Clang extension).
-- Constant folding in the compiler (1 + 2 → OP_CONSTANT 3).
+5. **Compound Assignment & Increment/Decrement** (`+=`, `-=`, `*=`, `/=`, `++`, `--` as compiler sugar)
+   - [ ] Implementation
+   - [ ] Basic sanity
+   - [ ] Add test cases in `test/assignment/` and `test/operator/` folders
 
-Developer experience
-- REPL: readline history + echo expression results (print non-nil expression statements).
-- Runtime errors that print the offending source line with a caret, not just line numbers + stack trace.
-- A --dump-bytecode CLI flag instead of recompiling with DEBUG_PRINT_CODE.
+6. **Modulo & Bitwise Operators** (`%`, `&`, `|`, `^`, `<<`, `>>`, `~` — one opcode and parse-rule row each)
+   - [ ] Implementation
+   - [ ] Basic sanity
+   - [ ] Add test cases in `test/operator/` folder
+
+### Medium Effort / High Expressiveness
+
+7. **Anonymous Functions / Lambdas** (`var f = fun (a, b) { return a + b; };` expression-level function compilation)
+   - [ ] Implementation
+   - [ ] Basic sanity
+   - [ ] Add test cases in `test/function/` and `test/closure/` folders
+
+8. **Exceptions (`try` / `catch` / `throw`)** (Exception handler stack per `CallFrame` and stack/upvalue unwinding in `vm.c`)
+   - [ ] Implementation
+   - [ ] Basic sanity
+   - [ ] Add test cases in `test/exception/` folder
+
+9. **Module System (`import "foo.lox"`)** (Per-module isolated globals, module caching, and relative path resolution)
+   - [ ] Implementation
+   - [ ] Basic sanity
+   - [ ] Add test cases in `test/module/` folder
+
+10. **Static Class Methods & Getters** (`class Math { static square(x) { ... } }` and parameterless property getters)
+    - [ ] Implementation
+    - [ ] Basic sanity
+    - [ ] Add test cases in `test/class/` and `test/method/` folders
+
+11. **Default & Variadic Parameters for User Functions** (Extend user-defined `ObjFunction` to match native `arity = -1` variadics and default values)
+    - [ ] Implementation
+    - [ ] Basic sanity
+    - [ ] Add test cases in `test/function/` folder
+
+12. **Block Comments (`/* ... */`)** (Multi-line comment skipping in `scanner.c` with proper line tracking)
+    - [ ] Implementation
+    - [ ] Basic sanity
+    - [ ] Add test cases in `test/comments/` folder
+
+### Ambitious / Advanced Extensions
+
+13. **Iterators, `for (var x in col)` Loops & Ranges (`1..10`)** (Iterator protocol for Lists, Maps, Strings, and Range objects)
+    - [ ] Implementation
+    - [ ] Basic sanity
+    - [ ] Add test cases in `test/for/` folder
+
+14. **Standard Library Suite** (`Math`, `Env`/`OS`, `Time`, `JSON` built on the `ObjNativeClass` bridge)
+    - [ ] Implementation
+    - [ ] Basic sanity
+    - [ ] Add test cases in `test/stdlib/` folder
+
+15. **Operator Overloading via Metamethods** (Lua/Python-style `__add`, `__sub`, `__index`, `__str` on user classes)
+    - [ ] Implementation
+    - [ ] Basic sanity
+    - [ ] Add test cases in `test/class/` folder
+
+16. **Distinct 64-bit Integer Type & UTF-8-Aware Strings** (Extend NaN-boxing/Value representation for exact integers and UTF-8 codepoint indexing)
+    - [ ] Implementation
+    - [ ] Basic sanity
+    - [ ] Add test cases in `test/number/` and `test/string/` folders
+
+### VM Performance & DX Enhancements
+
+17. **Constant Folding in Compiler** (Fold constant literals like `1 + 2` -> `OP_CONSTANT 3` at compile time)
+    - [ ] Implementation
+    - [ ] Basic sanity
+
+18. **Inline Caching for `OP_GET_PROPERTY` / `OP_INVOKE`** (Cache class pointer and method/field lookup at bytecode call sites)
+    - [ ] Implementation
+    - [ ] Basic sanity
+
+19. **Computed-Goto Bytecode Dispatch & Superinstructions** (Replace `switch` in `run()` with GCC/Clang jump table and fuse hot opcode pairs)
+    - [ ] Implementation
+    - [ ] Basic sanity
+
+20. **Enhanced CLI, REPL & Diagnostics** (`--dump-bytecode` flag, REPL `readline` history + auto-printing non-nil expressions, and source-line caret error reporting)
+    - [ ] Implementation
+    - [ ] Basic sanity
+
+---
+
+## Section 2: Bugs and Issues
+
+- [ ] **`table.c:40-42` (`findEntry` Tombstone Bug):** Remove the duplicate `if (entry->key == key || entry->key == NULL) return entry;` check that prematurely returns a tombstone before probing the rest of the chain.
+- [ ] **`table.c:141` (`tableSet` Count Bug):** Remove `if (!isNewKey) table->count++;` so overwriting an existing key does not artificially inflate `table->count`.
+- [ ] **`memory.c:191` & `vm.c:551` (`vm.switchValue` GC Root & Nesting Bug):** `vm.switchValue` is never marked in `markRoots()`, risking premature GC sweep during `switch` evaluation; nested `switch` statements also overwrite `vm.switchValue`. Keep the switch value on the VM stack instead.
+- [ ] **`compiler.c:409` (Leftover Debug Print):** Remove `printf("parsed ternary expression\n");` which fires on every ternary compilation and breaks test stdout comparison.
+- [ ] **`nativeFunction.c:93` (`fileRead` Buffer Length Bug):** `makeString(buf, (int) sz)` uses `ftell` size `sz` instead of actual bytes read `nread`. Pass `(int) nread` to prevent uninitialized trailing bytes.
+- [ ] **`nativeFunction.c:110` (`fileReadline` vs `inputNative` Newline Inconsistency):** `fileReadline` retains the trailing `\n` while `inputNative` strips it. Standardize behavior across both.
+- [ ] **`nativeFunction.c:139` (`fileClose` Receiver Mutation Hack):** `fileClose` reaches into `args[-1]` to null out `AS_NATIVE_INSTANCE(args[-1])->data`. Pass `ObjNativeInstance*` (or receiver `Value`) explicitly to `NativeMethodFn`.
+- [ ] **`nativeFunction.c:30` (`inputNative` Line Truncation):** `fgets(buffer, 1024, stdin)` silently truncates inputs longer than 1023 characters. Use dynamic buffer growth or `getline()`.
+- [ ] **`chunk.h:9` & `compiler.c:167` (`OP_CONSTANT_LONG` Incomplete):** `OP_CONSTANT_LONG` is in `chunk.h` and `debug.c`, but `makeConstant()` still caps constants at 255 and `vm.c` lacks an `OP_CONSTANT_LONG` handler.
+- [ ] **`main.c:58` (`runFile` Memory Leak):** `char* source = readFile(filePath);` is never freed after `interpret(source)` finishes.
+- [ ] **`test/` Suite Coverage Gaps:** Add dedicated test suites for custom extensions (`ternary ?:`, `switch/case/default`, and `File` native class) plus GC stress tests (`DEBUG_STRESS_GC`) and failure-mode tests.
+
+---
+
+## Section 3: Docs That Need to Be Completed and More Reading Material
+
+- [ ] **`docs/architecture.md` (VM & Compiler Internals)** 1. High-level pipeline diagram: `Source -> Scanner -> Pratt Parser / Single-Pass Compiler -> Bytecode Chunk -> VM Stack & Frame Loop`. 2. Value representation: Explain how `NAN_BOXING` packs `double`, `nil`, `bool`, and 48-bit `Obj*` pointers into a single 64-bit `uint64_t`. 3. Memory management & GC: Tri-color mark-and-sweep lifecycle (`white -> grayStack -> black`), string interning (`vm.strings`), and when `collectGarbage()` triggers. 4. Closures & Upvalues: How `ObjUpvalue` transitions stack variables from open (stack-pointing) to closed (heap-hoisted) via `OP_CLOSE_UPVALUE`. 5. Native C Bridge: How `ObjNative` functions and `ObjNativeClass` / `ObjNativeInstance` (`fileClass`, `listMethods`, `mapMethods`) interface with the VM stack and GC finalizers.
+- [ ] **`docs/bytecode_spec.md` (Bytecode Instruction Reference)** 1. Document every `OpCode` in `chunk.h`, its byte length, operands (1-byte index, 2-byte jump offset, constant pool index), and exact stack effect (e.g., `OP_INDEX_SET`: `[list, index, val] -> [val]`).
+- [ ] **`docs/language_reference.md` (Lox+ Language & Stdlib Guide)** 1. Syntax reference covering standard Lox plus your extensions: ternary `?:`, `switch/case/default`, Lists `[...]`, Maps `{...}`, string interpolation `"${...}"`, and built-in `File` / `clock` / `input` APIs.
+- [ ] **`docs/testing_and_coverage.md` (Testing & Benchmarking Guide)** 1. Explain how `tester.sh` works, how `.yaml` specs map `.lox` inputs to `.out.expected` and `.err.expected`, and how to generate `lcov`/`gcov` HTML coverage reports.
+- [ ] **[Crafting Interpreters — Part III: A Bytecode Virtual Machine (Robert Nystrom)](https://craftinginterpreters.com/a-bytecode-virtual-machine.html)** — Core reference for `clox`'s Pratt parser, NaN boxing, upvalues, and mark-and-sweep GC.
+- [ ] **[ Pratt Parsing: "Top Down Operator Precedence" (Vaughan Pratt) / Bob Nystrom's "Pratt Parsers: Expression Parsing Made Easy"](https://journal.stuffwithstuff.com/2011/03/19/pratt-parsers-expression-parsing-made-easy/)** — Deep dive into prefix/infix precedence climbing tables (`ParseRule rules[]`).
+- [ ] **[Lua 5.0 / Wren VM Implementation Papers](https://www.lua.org/doc/jucs05.pdf)** — Reading material for implementing `ObjList`, `ObjMap` hash tables, metamethods, and upvalue optimizations in a C VM.
+- [ ] **[Inline Caching & Superinstructions in Bytecode VMs ("Efficient Interpretation using Quickening")](https://www.complang.tuwien.ac.at/forth/threaded-code.html)** — Reading material for computed-goto dispatch (`&&op_label`) and polymorphic inline caches (PICs).
+
+<End of README>
