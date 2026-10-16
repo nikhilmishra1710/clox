@@ -38,3 +38,27 @@ var x = 42;
 var items = [1, 2, 3];
 print "x = ${x}, sum = ${x + 8}, first = ${items[0]}";
 // Expect: x = 42, sum = 50, first = 1
+
+// Test 1: for loop with continue and break + local variables inside body
+for (var i = 0; i < 10; i = i + 1) {
+    var msg = "iter";
+    if (i == 2) continue;
+    if (i == 5) break;
+    print i;
+}
+// Expect: 0, 1, 3, 4
+
+// Test 2: nested while loops
+var a = 0;
+while (a < 3) {
+    var b = 0;
+    while (b < 3) {
+        if (b == 1) break;
+        print a * 10 + b;
+        b = b + 1;
+    }
+    a = a + 1;
+}
+
+print a;
+// Expect: 0, 10, 20

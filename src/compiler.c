@@ -55,8 +55,17 @@ typedef struct {
 
 typedef enum { TYPE_FUNCTION, TYPE_INITIALIZER, TYPE_METHOD, TYPE_SCRIPT } FunctionType;
 
+typedef struct LoopCompiler {
+    struct LoopCompiler* enclosing;
+    int start;
+    int scopeDepth;
+    int breakJumps[64];
+    int breakCount;
+} LoopCompiler;
+
 typedef struct Compiler {
     struct Compiler* enclosing;
+    struct LoopCompiler* currentLoop;
     ObjFunction* function;
     FunctionType type;
     Local locals[UINT8_COUNT];
@@ -199,6 +208,7 @@ static void patchJump(int offset) {
 
 static void initCompiler(Compiler* compiler, FunctionType type) {
     compiler->enclosing = current;
+    compiler->currentLoop = NULL;
     compiler->function = NULL;
     compiler->type = type;
     compiler->localCount = 0;
@@ -218,6 +228,14 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
         local->name.start = "";
         local->name.length = 0;
     }
+}
+
+static void initLoopCompiler(LoopCompiler* loop, int start) {
+    loop->enclosing = current->currentLoop;
+    loop->start = start;
+    loop->scopeDepth = current->scopeDepth;
+    loop->breakCount = 0;
+    current->currentLoop = loop;
 }
 
 static ObjFunction* endCompiler(void) {
@@ -359,6 +377,47 @@ static void markInitialized(void) {
     if (current->scopeDepth == 0)
         return;
     current->locals[current->localCount - 1].depth = current->scopeDepth;
+}
+
+static void discardLocals(int targetDepth) {
+    for (int i = current->localCount - 1; i >= 0 && current->locals[i].depth > targetDepth; i--) {
+        if (current->locals[i].isCaptured) {
+            emitByte(OP_CLOSE_UPVALUE);
+        } else {
+            emitByte(OP_POP);
+        }
+    }
+}
+
+static void breakStatement(void) {
+    if (current->currentLoop == NULL) {
+        error("Can't use 'break' outside of a loop.");
+        return;
+    }
+    consume(TOKEN_SEMICOLON, "Expect ';' after 'break'.");
+
+    // Pop/close any locals declared inside the loop
+    discardLocals(current->currentLoop->scopeDepth);
+
+    if (current->currentLoop->breakCount == 64) {
+        error("Too many 'break' statements in one loop.");
+        return;
+    }
+    current->currentLoop->breakJumps[current->currentLoop->breakCount++] = emitJump(OP_JUMP);
+}
+
+static void continueStatement(void) {
+    if (current->currentLoop == NULL) {
+        error("Can't use 'continue' outside of a loop.");
+        return;
+    }
+    consume(TOKEN_SEMICOLON, "Expect ';' after 'continue'.");
+
+    // Pop/close any locals declared inside the loop body
+    discardLocals(current->currentLoop->scopeDepth);
+
+    // Jump back to the loop start (or increment clause in a for-loop)
+    emitLoop(current->currentLoop->start);
 }
 
 static void defineVariable(uint8_t global) {
@@ -922,6 +981,8 @@ static void forStatement(void) {
         loopStart = incrementStart;
         patchJump(bodyJump);
     }
+    LoopCompiler loop;
+    initLoopCompiler(&loop, loopStart);
     statement();
     emitLoop(loopStart);
 
@@ -930,6 +991,11 @@ static void forStatement(void) {
         emitByte(OP_POP); // Condition.
     }
 
+    for (int i = 0; i < loop.breakCount; i++) {
+        patchJump(loop.breakJumps[i]);
+    }
+
+    current->currentLoop = current->currentLoop->enclosing;
     endScope();
 }
 
@@ -975,7 +1041,9 @@ static void returnStatement(void) {
 }
 
 static void whileStatement(void) {
+    LoopCompiler loop;
     int loopStart = currentChunk()->count;
+    initLoopCompiler(&loop, loopStart);
     consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
     expression();
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
@@ -987,6 +1055,11 @@ static void whileStatement(void) {
 
     patchJump(exitJump);
     emitByte(OP_POP);
+    for (int i = 0; i < loop.breakCount; i++) {
+        patchJump(loop.breakJumps[i]);
+    }
+
+    current->currentLoop = current->currentLoop->enclosing;
 }
 
 static void switchStatement(void) {
@@ -1043,6 +1116,8 @@ static void synchronize(void) {
         case TOKEN_WHILE:
         case TOKEN_PRINT:
         case TOKEN_RETURN:
+        case TOKEN_BREAK:
+        case TOKEN_CONTINUE:
             return;
 
         default:; // Do nothing.
@@ -1069,6 +1144,10 @@ static void statement() {
         beginScope();
         block();
         endScope();
+    } else if (match(TOKEN_BREAK)) {
+        breakStatement();
+    } else if (match(TOKEN_CONTINUE)) {
+        continueStatement();
     } else {
         expressionStmt();
     }

@@ -5,23 +5,23 @@
 ### High Impact / Core Next Steps
 
 1. **Lists / Dynamic Arrays** (`var a = [1, 2, 3];`, indexing `a[0]`, `a[0] = x`, methods `push`/`pop`/`len` via `OBJ_LIST`, `OP_BUILD_LIST`, `OP_INDEX_GET/SET`)
-   - [ ] Implementation
-   - [ ] Basic sanity
+   - [X] Implementation
+   - [X] Basic sanity
    - [ ] Add test cases in `test/list/` folder
 
 2. **Maps / Dictionaries** (Expose `table.c` as `{"key": value}` literals via `OBJ_MAP`, `OP_BUILD_MAP`, and `OP_INDEX_GET/SET`, plus `has`/`remove`/`keys`/`len` methods)
-   - [ ] Implementation
-   - [ ] Basic sanity
+   - [X] Implementation
+   - [X] Basic sanity
    - [ ] Add test cases in `test/map/` folder
 
 3. **String Operations & Interpolation** (`s.length()`, `s[i]`, slicing `s[a:b]`, escape sequences `\n`/`\t`/`\"`, and `"x = ${x}"` string interpolation)
-   - [ ] Implementation
-   - [ ] Basic sanity
+   - [X] Implementation
+   - [X] Basic sanity
    - [ ] Add test cases in `test/string/` folder
 
 4. **Loop & Switch Control Flow (`break` / `continue`)** (Jump patching in loop/switch compilers and `fallthrough`/break semantics in `switch`)
-   - [ ] Implementation
-   - [ ] Basic sanity
+   - [X] Implementation
+   - [X] Basic sanity
    - [ ] Add test cases in `test/for/`, `test/while/`, and `test/switch/` folders
 
 5. **Compound Assignment & Increment/Decrement** (`+=`, `-=`, `*=`, `/=`, `++`, `--` as compiler sugar)

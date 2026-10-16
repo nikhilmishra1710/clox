@@ -61,6 +61,8 @@ typedef enum {
     TOKEN_SWITCH,
     TOKEN_CASE,
     TOKEN_DEFAULT,
+    TOKEN_BREAK,
+    TOKEN_CONTINUE,
     // Special tokens
     TOKEN_INTERPOLATION,
     // EOF and error
