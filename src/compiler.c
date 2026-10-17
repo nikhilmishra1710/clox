@@ -652,6 +652,15 @@ static void namedVariable(Token name, bool canAssign) {
 
 static void prefixIncDec(bool canAssign) {
     (void) canAssign;
+
+    TokenType type = parser.previous.type;
+    if (type == TOKEN_MINUS_MINUS && !check(TOKEN_IDENTIFIER)) {
+        parsePrecedence(PREC_UNARY);
+        emitByte(OP_NEGATE);
+        emitByte(OP_NEGATE);
+        return;
+    }
+
     uint8_t op = (parser.previous.type == TOKEN_PLUS_PLUS) ? OP_ADD : OP_SUBTRACT;
 
     consume(TOKEN_IDENTIFIER, "Expect variable name after '++' or '--'.");
@@ -813,6 +822,11 @@ static void subscript(bool canAssign) {
 
 static void map(bool canAssign) {
     (void) canAssign;
+    if (check(TOKEN_RIGHT_BRACE)) {
+        errorAt(&parser.previous, "Expect expression.");
+        advance();
+        return;
+    }
     int entryCount = 0;
     if (!check(TOKEN_RIGHT_BRACE)) {
         do {
