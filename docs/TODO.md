@@ -134,5 +134,3 @@
 - [ ] **[ Pratt Parsing: "Top Down Operator Precedence" (Vaughan Pratt) / Bob Nystrom's "Pratt Parsers: Expression Parsing Made Easy"](https://journal.stuffwithstuff.com/2011/03/19/pratt-parsers-expression-parsing-made-easy/)** — Deep dive into prefix/infix precedence climbing tables (`ParseRule rules[]`).
 - [ ] **[Lua 5.0 / Wren VM Implementation Papers](https://www.lua.org/doc/jucs05.pdf)** — Reading material for implementing `ObjList`, `ObjMap` hash tables, metamethods, and upvalue optimizations in a C VM.
 - [ ] **[Inline Caching & Superinstructions in Bytecode VMs ("Efficient Interpretation using Quickening")](https://www.complang.tuwien.ac.at/forth/threaded-code.html)** — Reading material for computed-goto dispatch (`&&op_label`) and polymorphic inline caches (PICs).
-
-<End of README>

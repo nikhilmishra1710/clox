@@ -389,6 +389,26 @@ static void discardLocals(int targetDepth) {
     }
 }
 
+static bool matchCompoundOp(uint8_t* opOut) {
+    if (match(TOKEN_PLUS_EQUAL)) {
+        *opOut = OP_ADD;
+        return true;
+    }
+    if (match(TOKEN_MINUS_EQUAL)) {
+        *opOut = OP_SUBTRACT;
+        return true;
+    }
+    if (match(TOKEN_STAR_EQUAL)) {
+        *opOut = OP_MULTIPLY;
+        return true;
+    }
+    if (match(TOKEN_SLASH_EQUAL)) {
+        *opOut = OP_DIVIDE;
+        return true;
+    }
+    return false;
+}
+
 static void breakStatement(void) {
     if (current->currentLoop == NULL) {
         error("Can't use 'break' outside of a loop.");
@@ -519,9 +539,25 @@ static void dot(bool canAssign) {
     consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
     uint8_t name = identifierConstant(&parser.previous);
 
+    uint8_t compoundOp;
     if (canAssign && match(TOKEN_EQUAL)) {
         expression();
         emitBytes(OP_SET_PROPERTY, name);
+    } else if (canAssign && matchCompoundOp(&compoundOp)) {
+        emitByte(OP_DUP);                 // [obj] -> [obj, obj]
+        emitBytes(OP_GET_PROPERTY, name); // -> [obj, oldVal]
+        expression();                     // -> [obj, oldVal, rhs]
+        emitByte(compoundOp);             // -> [obj, newVal]
+        emitBytes(OP_SET_PROPERTY, name); // -> [newVal]
+    } else if (canAssign && (match(TOKEN_PLUS_PLUS) || match(TOKEN_MINUS_MINUS))) {
+        uint8_t op = (parser.previous.type == TOKEN_PLUS_PLUS) ? OP_ADD : OP_SUBTRACT;
+        emitByte(OP_DUP);                 // [obj, obj]
+        emitBytes(OP_GET_PROPERTY, name); // [obj, oldVal]
+        emitConstant(NUMBER_VAL(1));      // [obj, oldVal, 1]
+        emitByte(op);                     // [obj, newVal]
+        emitBytes(OP_SET_PROPERTY, name); // [newVal]
+        emitConstant(NUMBER_VAL(1));
+        emitByte(op == OP_ADD ? OP_SUBTRACT : OP_ADD); // [oldVal]
     } else if (match(TOKEN_LEFT_PAREN)) {
         uint8_t argCount = argumentList();
         emitBytes(OP_INVOKE, name);
@@ -592,12 +628,53 @@ static void namedVariable(Token name, bool canAssign) {
         setOp = OP_SET_GLOBAL;
     }
 
+    uint8_t compoundOp;
     if (canAssign && match(TOKEN_EQUAL)) {
         expression();
         emitBytes(setOp, (uint8_t) arg);
+    } else if (canAssign && matchCompoundOp(&compoundOp)) {
+        emitBytes(getOp, (uint8_t) arg);
+        expression();
+        emitByte(compoundOp);
+        emitBytes(setOp, (uint8_t) arg);
+    } else if (canAssign && (match(TOKEN_PLUS_PLUS) || match(TOKEN_MINUS_MINUS))) {
+        uint8_t op = (parser.previous.type == TOKEN_PLUS_PLUS) ? OP_ADD : OP_SUBTRACT;
+        emitBytes(getOp, (uint8_t) arg); // Keep old value on stack as result
+        emitBytes(getOp, (uint8_t) arg); // Load again to compute new value
+        emitConstant(NUMBER_VAL(1));
+        emitByte(op);
+        emitBytes(setOp, (uint8_t) arg);
+        emitByte(OP_POP); // Pop new value, leaving old value
     } else {
         emitBytes(getOp, (uint8_t) arg);
     }
+}
+
+static void prefixIncDec(bool canAssign) {
+    (void) canAssign;
+    uint8_t op = (parser.previous.type == TOKEN_PLUS_PLUS) ? OP_ADD : OP_SUBTRACT;
+
+    consume(TOKEN_IDENTIFIER, "Expect variable name after '++' or '--'.");
+    Token name = parser.previous;
+
+    uint8_t getOp, setOp;
+    int arg = resolveLocal(current, &name);
+    if (arg != -1) {
+        getOp = OP_GET_LOCAL;
+        setOp = OP_SET_LOCAL;
+    } else if ((arg = resolveUpvalue(current, &name)) != -1) {
+        getOp = OP_GET_UPVALUE;
+        setOp = OP_SET_UPVALUE;
+    } else {
+        arg = identifierConstant(&name);
+        getOp = OP_GET_GLOBAL;
+        setOp = OP_SET_GLOBAL;
+    }
+
+    emitBytes(getOp, (uint8_t) arg);
+    emitConstant(NUMBER_VAL(1));
+    emitByte(op);
+    emitBytes(setOp, (uint8_t) arg); // Leaves the new value on top of the stack!
 }
 
 static void variable(bool canAssign) {
@@ -709,9 +786,26 @@ static void subscript(bool canAssign) {
 
     consume(TOKEN_RIGHT_SQUARE_BRACE, "Expect ']' after index.");
 
+    uint8_t compoundOp;
     if (canAssign && match(TOKEN_EQUAL)) {
         expression();
         emitByte(OP_INDEX_SET);
+    } else if (canAssign && matchCompoundOp(&compoundOp)) {
+        emitByte(OP_DUP2);      // [list, idx] -> [list, idx, list, idx]
+        emitByte(OP_INDEX_GET); // -> [list, idx, oldVal]
+        expression();           // -> [list, idx, oldVal, rhs]
+        emitByte(compoundOp);   // -> [list, idx, newVal]
+        emitByte(OP_INDEX_SET); // -> [newVal]
+    } else if (canAssign && (match(TOKEN_PLUS_PLUS) || match(TOKEN_MINUS_MINUS))) {
+        uint8_t op = (parser.previous.type == TOKEN_PLUS_PLUS) ? OP_ADD : OP_SUBTRACT;
+        emitByte(OP_DUP2);           // [list, idx, list, idx]
+        emitByte(OP_INDEX_GET);      // [list, idx, oldVal]
+        emitConstant(NUMBER_VAL(1)); // [list, idx, oldVal, 1]
+        emitByte(op);                // [list, idx, newVal]
+        emitByte(OP_INDEX_SET);      // [newVal]
+        // Convert newVal back to oldVal so postfix a[0]++ returns the old value
+        emitConstant(NUMBER_VAL(1));
+        emitByte(op == OP_ADD ? OP_SUBTRACT : OP_ADD);
     } else {
         emitByte(OP_INDEX_GET);
     }
@@ -784,6 +878,12 @@ ParseRule rules[] = {
     [TOKEN_GREATER_EQUAL] = {NULL, binary, PREC_COMPARISON},
     [TOKEN_LESS] = {NULL, binary, PREC_COMPARISON},
     [TOKEN_LESS_EQUAL] = {NULL, binary, PREC_COMPARISON},
+    [TOKEN_PLUS_EQUAL] = {NULL, NULL, PREC_NONE},
+    [TOKEN_MINUS_EQUAL] = {NULL, NULL, PREC_NONE},
+    [TOKEN_STAR_EQUAL] = {NULL, NULL, PREC_NONE},
+    [TOKEN_SLASH_EQUAL] = {NULL, NULL, PREC_NONE},
+    [TOKEN_PLUS_PLUS] = {prefixIncDec, NULL, PREC_NONE},
+    [TOKEN_MINUS_MINUS] = {prefixIncDec, NULL, PREC_NONE},
     [TOKEN_IDENTIFIER] = {variable, NULL, PREC_NONE},
     [TOKEN_STRING] = {string, NULL, PREC_NONE},
     [TOKEN_INTERPOLATION] = {interpolation, NULL, PREC_NONE},
@@ -826,6 +926,12 @@ static void parsePrecedence(Precedence precedence) {
     }
 
     if (canAssign && match(TOKEN_EQUAL)) {
+        error("Invalid assignment target.");
+    }
+
+    uint8_t dummy;
+    if (canAssign && (match(TOKEN_EQUAL) || matchCompoundOp(&dummy) || match(TOKEN_PLUS_PLUS) ||
+                      match(TOKEN_MINUS_MINUS))) {
         error("Invalid assignment target.");
     }
 }

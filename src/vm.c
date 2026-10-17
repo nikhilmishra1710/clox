@@ -867,6 +867,17 @@ static InterpretResult run(void) {
             push(OBJ_VAL(str));
             break;
         }
+        case OP_DUP: {
+            push(peek(0));
+            break;
+        }
+        case OP_DUP2: {
+            Value b = peek(0);
+            Value a = peek(1);
+            push(a);
+            push(b);
+            break;
+        }
         }
     }
 

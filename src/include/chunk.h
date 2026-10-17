@@ -50,7 +50,9 @@ typedef enum {
     OP_INDEX_GET,
     OP_INDEX_SET,
     OP_SLICE,
-    OP_TO_STRING
+    OP_TO_STRING,
+    OP_DUP,
+    OP_DUP2
 } OpCode;
 
 typedef struct {

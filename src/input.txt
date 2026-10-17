@@ -62,3 +62,38 @@ while (a < 3) {
 
 print a;
 // Expect: 0, 10, 20
+
+var x = 10;
+x += 5;
+print x;      // Expect: 15
+
+x -= 3;
+print x;      // Expect: 12
+
+x *= 2;
+print x;      // Expect: 24
+
+x /= 4;
+print x;      // Expect: 6
+
+print x++;    // Expect: 6 (postfix returns old value)
+print x;      // Expect: 7
+
+print ++x;    // Expect: 8 (prefix returns new value)
+print --x;    // Expect: 7
+
+// Works in for loops!
+for (var i = 0; i < 3; i++) {
+    print i;  // Expect: 0, 1, 2
+}
+
+var list = [10, 20, 30];
+list[0] += 5;
+print list[0];   // Expect: 15
+
+print list[1]++; // Expect: 20
+print list[1];   // Expect: 21
+
+var m = {"score": 100};
+m["score"] -= 25;
+print m["score"]; // Expect: 75
