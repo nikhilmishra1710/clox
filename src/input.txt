@@ -172,3 +172,38 @@ fun earlyReturn() {
     }
 }
 print earlyReturn(); // Expect: 4. Returned cleanly from try
+
+// 1. Basic lambda assignment
+var add = fun(a, b) {
+    return a + b;
+};
+print add;        // Expect: <fn anonymous>
+print add(3, 4);  // Expect: 7
+
+// 2. Closure over local variable
+fun makeCounter() {
+    var count = 0;
+    return fun() {
+        count += 1;
+        return count;
+    };
+}
+var c = makeCounter();
+print c(); // Expect: 1
+print c(); // Expect: 2
+
+// 3. Passing a lambda as a callback to a higher-order function
+fun map(list, fn) {
+    var out = [];
+    for (var i = 0; i < list.len(); i++) {
+        out.push(fn(list[i]));
+    }
+    return out;
+}
+
+var nums = [1, 2, 3, 4];
+var squared = map(nums, fun(x) { return x * x; });
+print squared; // Expect: [1, 4, 9, 16]
+
+// 4. Immediately Invoked Function Expression (IIFE)
+print (fun(msg) { return "Hello " + msg; })("World!"); // Expect: Hello World!

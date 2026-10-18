@@ -219,7 +219,11 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
     compiler->function = newFunction();
     current = compiler;
     if (type != TYPE_SCRIPT) {
-        current->function->name = copyString(parser.previous.start, parser.previous.length);
+        if (parser.previous.type == TOKEN_FUN) {
+            current->function->name = copyString("anonymous", 9);
+        } else {
+            current->function->name = copyString(parser.previous.start, parser.previous.length);
+        }
     }
     Local* local = &current->locals[current->localCount++];
     local->depth = 0;
@@ -278,6 +282,7 @@ static ParseRule* getRule(TokenType type);
 static void parsePrecedence(Precedence precedence);
 static void statement(void);
 static void declaration(void);
+static void function(FunctionType type);
 
 static uint8_t identifierConstant(Token* name) {
     return makeConstant(OBJ_VAL(copyString(name->start, name->length)));
@@ -898,6 +903,11 @@ static void interpolation(bool canAssign) {
     emitByte(OP_ADD);
 }
 
+static void lambda(bool canAssign) {
+    (void) canAssign;
+    function(TYPE_FUNCTION);
+}
+
 ParseRule rules[] = {
     [TOKEN_LEFT_PAREN] = {grouping, call, PREC_CALL},
     [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
@@ -943,7 +953,7 @@ ParseRule rules[] = {
     [TOKEN_ELSE] = {NULL, NULL, PREC_NONE},
     [TOKEN_FALSE] = {literal, NULL, PREC_NONE},
     [TOKEN_FOR] = {NULL, NULL, PREC_NONE},
-    [TOKEN_FUN] = {NULL, NULL, PREC_NONE},
+    [TOKEN_FUN] = {lambda, NULL, PREC_NONE},
     [TOKEN_IF] = {NULL, NULL, PREC_NONE},
     [TOKEN_NIL] = {literal, NULL, PREC_NONE},
     [TOKEN_OR] = {NULL, or_, PREC_OR},
