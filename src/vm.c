@@ -548,6 +548,79 @@ static InterpretResult run(void) {
             BINARY_OP(NUMBER_VAL, *);
             break;
         }
+        case OP_MODULO: {
+            if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {
+                runtimeError("Operands must be numbers.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            double b = AS_NUMBER(pop());
+            double a = AS_NUMBER(pop());
+            if (b == 0) {
+                runtimeError("Modulo by zero.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            push(NUMBER_VAL((double) ((long) a % (long) b)));
+            break;
+        }
+        case OP_BITWISE_AND: {
+            if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {
+                runtimeError("Operands must be numbers.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            long b = (long) AS_NUMBER(pop());
+            long a = (long) AS_NUMBER(pop());
+            push(NUMBER_VAL((double) (a & b)));
+            break;
+        }
+        case OP_BITWISE_OR: {
+            if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {
+                runtimeError("Operands must be numbers.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            long b = (long) AS_NUMBER(pop());
+            long a = (long) AS_NUMBER(pop());
+            push(NUMBER_VAL((double) (a | b)));
+            break;
+        }
+        case OP_BITWISE_XOR: {
+            if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {
+                runtimeError("Operands must be numbers.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            long b = (long) AS_NUMBER(pop());
+            long a = (long) AS_NUMBER(pop());
+            push(NUMBER_VAL((double) (a ^ b)));
+            break;
+        }
+        case OP_BITWISE_SHL: {
+            if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {
+                runtimeError("Operands must be numbers.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            long b = (long) AS_NUMBER(pop());
+            long a = (long) AS_NUMBER(pop());
+            push(NUMBER_VAL((double) (a << b)));
+            break;
+        }
+        case OP_BITWISE_SHR: {
+            if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {
+                runtimeError("Operands must be numbers.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            long b = (long) AS_NUMBER(pop());
+            long a = (long) AS_NUMBER(pop());
+            push(NUMBER_VAL((double) (a >> b)));
+            break;
+        }
+        case OP_BITWISE_NOT: {
+            if (!IS_NUMBER(peek(0))) {
+                runtimeError("Operand must be a number.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            long a = (long) AS_NUMBER(pop());
+            push(NUMBER_VAL((double) (~a)));
+            break;
+        }
         case OP_DIVIDE: {
             BINARY_OP(NUMBER_VAL, /);
             break;

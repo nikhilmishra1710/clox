@@ -28,7 +28,14 @@ typedef enum {
     TOKEN_STAR,
     TOKEN_QUESTION,
     TOKEN_COLON,
+    TOKEN_PERCENT,      // %
+    TOKEN_AMPERSAND,    // &
+    TOKEN_PIPE,         // |
+    TOKEN_CARET,        // ^
+    TOKEN_TILDE,        // ~
     // One or two character tokens.
+    TOKEN_LESS_LESS,    // <<
+    TOKEN_GREATER_GREATER, // >>
     TOKEN_BANG,
     TOKEN_BANG_EQUAL,
     TOKEN_EQUAL,

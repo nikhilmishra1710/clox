@@ -1,1 +1,107 @@
-1 * "1"; // expect runtime error: Operands must be numbers.
+var a = [10, 20, 30];
+print a;          // Expect: [10, 20, 30]
+print a[0];       // Expect: 10
+a[1] = 99;
+a.push(40);
+print a;          // Expect: [10, 99, 30, 40]
+print a.pop();    // Expect: 40
+print a.len();    // Expect: 3
+
+var user = {
+    "name": "Alice",
+    "role": "admin"
+};
+
+print user;              // {"name": Alice, "role": admin}
+print user["name"];      // Alice
+print user["missing"];   // nil
+
+user["role"] = "owner";
+user[" status"] = "active";
+
+print user.has("name");  // true
+print user.len();        // 3
+print user.keys();       // [name, role,  status]
+user.remove(" status");
+print user.len();        // 2
+
+var s = "hello world";
+print s.length();         // 11
+print s[0];               // h
+print s[-1];              // d
+var s1 = s[0:5];             // hello
+print s1;
+print s[6:];              // world
+print s[:5];              // hello
+
+var x = 42;
+var items = [1, 2, 3];
+print "x = ${x}, sum = ${x + 8}, first = ${items[0]}";
+// Expect: x = 42, sum = 50, first = 1
+
+// Test 1: for loop with continue and break + local variables inside body
+for (var i = 0; i < 10; i = i + 1) {
+    var msg = "iter";
+    if (i == 2) continue;
+    if (i == 5) break;
+    print i;
+}
+// Expect: 0, 1, 3, 4
+
+// Test 2: nested while loops
+var a = 0;
+while (a < 3) {
+    var b = 0;
+    while (b < 3) {
+        if (b == 1) break;
+        print a * 10 + b;
+        b = b + 1;
+    }
+    a = a + 1;
+}
+
+print a;
+// Expect: 0, 10, 20
+
+var x = 10;
+x += 5;
+print x;      // Expect: 15
+
+x -= 3;
+print x;      // Expect: 12
+
+x *= 2;
+print x;      // Expect: 24
+
+x /= 4;
+print x;      // Expect: 6
+
+print x++;    // Expect: 6 (postfix returns old value)
+print x;      // Expect: 7
+
+print ++x;    // Expect: 8 (prefix returns new value)
+print --x;    // Expect: 7
+
+// Works in for loops!
+for (var i = 0; i < 3; i++) {
+    print i;  // Expect: 0, 1, 2
+}
+
+var list = [10, 20, 30];
+list[0] += 5;
+print list[0];   // Expect: 15
+
+print list[1]++; // Expect: 20
+print list[1];   // Expect: 21
+
+var m = {"score": 100};
+m["score"] -= 25;
+print m["score"]; // Expect: 75
+
+print 10 % 3;      // Expect: 1
+print 5 & 3;       // Expect: 1
+print 5 | 3;       // Expect: 7
+print 5 ^ 3;       // Expect: 6
+print 1 << 3;      // Expect: 8
+print 8 >> 2;      // Expect: 2
+print ~0;          // Expect: -1

@@ -524,6 +524,24 @@ static void binary(bool canAssign) {
     case TOKEN_SLASH:
         emitByte(OP_DIVIDE);
         break;
+    case TOKEN_PERCENT:
+        emitByte(OP_MODULO);
+        break;
+    case TOKEN_AMPERSAND:
+        emitByte(OP_BITWISE_AND);
+        break;
+    case TOKEN_PIPE:
+        emitByte(OP_BITWISE_OR);
+        break;
+    case TOKEN_CARET:
+        emitByte(OP_BITWISE_XOR);
+        break;
+    case TOKEN_LESS_LESS:
+        emitByte(OP_BITWISE_SHL);
+        break;
+    case TOKEN_GREATER_GREATER:
+        emitByte(OP_BITWISE_SHR);
+        break;
     default:
         return; // Unreachable.
     }
@@ -741,6 +759,9 @@ static void unary(bool canAssign) {
     case TOKEN_MINUS:
         emitByte(OP_NEGATE);
         break;
+    case TOKEN_TILDE:
+        emitByte(OP_BITWISE_NOT);
+        break;
     default:
         break;
     }
@@ -880,6 +901,13 @@ ParseRule rules[] = {
     [TOKEN_DOT] = {NULL, dot, PREC_CALL},
     [TOKEN_MINUS] = {unary, binary, PREC_TERM},
     [TOKEN_PLUS] = {NULL, binary, PREC_TERM},
+    [TOKEN_PERCENT] = {NULL, binary, PREC_FACTOR},
+    [TOKEN_AMPERSAND] = {NULL, binary, PREC_TERM},
+    [TOKEN_PIPE] = {NULL, binary, PREC_TERM},
+    [TOKEN_CARET] = {NULL, binary, PREC_TERM},
+    [TOKEN_TILDE] = {unary, NULL, PREC_NONE},
+    [TOKEN_LESS_LESS] = {NULL, binary, PREC_TERM},
+    [TOKEN_GREATER_GREATER] = {NULL, binary, PREC_TERM},
     [TOKEN_SEMICOLON] = {NULL, NULL, PREC_NONE},
     [TOKEN_SLASH] = {NULL, binary, PREC_FACTOR},
     [TOKEN_STAR] = {NULL, binary, PREC_FACTOR},
