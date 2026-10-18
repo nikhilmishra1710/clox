@@ -8,6 +8,9 @@
 
 #define FRAMES_MAX 64
 #define STACK_MAX (int) (FRAMES_MAX * UINT8_MAX)
+#define FRAMES_MAX 64
+#define HANDLERS_MAX 64
+#define STACK_MAX (int) (FRAMES_MAX * UINT8_MAX)
 
 typedef struct {
     ObjClosure* closure;
@@ -16,8 +19,16 @@ typedef struct {
 } CallFrame;
 
 typedef struct {
+    int frameCount;
+    Value* stackTop;
+    uint8_t* catchIp;
+} ExceptionHandler;
+
+typedef struct {
     CallFrame frames[FRAMES_MAX];
     int frameCount;
+    ExceptionHandler handlers[HANDLERS_MAX];
+    int handlerCount;
     Chunk* chunk;
     uint8_t* ip;
     Value stack[STACK_MAX];

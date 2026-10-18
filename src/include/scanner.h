@@ -76,6 +76,9 @@ typedef enum {
     TOKEN_DEFAULT,
     TOKEN_BREAK,
     TOKEN_CONTINUE,
+    TOKEN_TRY,
+    TOKEN_CATCH,
+    TOKEN_THROW,
     // Special tokens
     TOKEN_INTERPOLATION,
     // EOF and error

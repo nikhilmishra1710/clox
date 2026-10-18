@@ -13,6 +13,7 @@ VM vm;
 static void resetStack(void) {
     vm.stackTop = vm.stack;
     vm.frameCount = 0;
+    vm.handlerCount = 0;
     vm.openUpvalues = NULL;
 }
 
@@ -718,6 +719,11 @@ static InterpretResult run(void) {
             Value result = pop();
             closeUpvalues(frame->slots);
             vm.frameCount--;
+            // Discard any exception handlers registered inside the returning frame
+            while (vm.handlerCount > 0 &&
+                   vm.handlers[vm.handlerCount - 1].frameCount > vm.frameCount) {
+                vm.handlerCount--;
+            }
             if (vm.frameCount == 0) {
                 pop();
                 return INTERPRET_OK;
@@ -949,6 +955,47 @@ static InterpretResult run(void) {
             Value a = peek(1);
             push(a);
             push(b);
+            break;
+        }
+        case OP_PUSH_HANDLER: {
+            uint16_t offset = READ_SHORT();
+            if (vm.handlerCount == HANDLERS_MAX) {
+                runtimeError("Too many nested try blocks.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            ExceptionHandler* handler = &vm.handlers[vm.handlerCount++];
+            handler->frameCount = vm.frameCount;
+            handler->stackTop = vm.stackTop;
+            handler->catchIp = frame->ip + offset;
+            break;
+        }
+        case OP_POP_HANDLER: {
+            vm.handlerCount--;
+            break;
+        }
+        case OP_THROW: {
+            Value thrown = pop();
+            if (vm.handlerCount == 0) {
+                // Unhandled exception! Print it as a runtime error with full stack trace
+                ObjString* msg = valueToString(thrown);
+                runtimeError("Unhandled exception: %s", msg->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            // Pop the nearest active handler
+            ExceptionHandler handler = vm.handlers[--vm.handlerCount];
+
+            // Close any open upvalues above the saved stackTop
+            closeUpvalues(handler.stackTop);
+
+            // Unwind the CallFrame stack and Value stack
+            vm.frameCount = handler.frameCount;
+            vm.stackTop = handler.stackTop;
+            frame = &vm.frames[vm.frameCount - 1];
+            frame->ip = handler.catchIp;
+
+            // Push the thrown value onto the stack so the catch variable (err) receives it!
+            push(thrown);
             break;
         }
         }

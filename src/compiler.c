@@ -61,6 +61,7 @@ typedef struct LoopCompiler {
     int scopeDepth;
     int breakJumps[64];
     int breakCount;
+    int tryDepth;
 } LoopCompiler;
 
 typedef struct Compiler {
@@ -72,6 +73,7 @@ typedef struct Compiler {
     int localCount;
     Upvalue upvalues[UINT8_COUNT];
     int scopeDepth;
+    int tryDepth;
 } Compiler;
 
 typedef struct ClassCompiler {
@@ -213,6 +215,7 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
     compiler->type = type;
     compiler->localCount = 0;
     compiler->scopeDepth = 0;
+    compiler->tryDepth = 0;
     compiler->function = newFunction();
     current = compiler;
     if (type != TYPE_SCRIPT) {
@@ -235,6 +238,7 @@ static void initLoopCompiler(LoopCompiler* loop, int start) {
     loop->start = start;
     loop->scopeDepth = current->scopeDepth;
     loop->breakCount = 0;
+    loop->tryDepth = current->tryDepth;
     current->currentLoop = loop;
 }
 
@@ -418,7 +422,9 @@ static void breakStatement(void) {
 
     // Pop/close any locals declared inside the loop
     discardLocals(current->currentLoop->scopeDepth);
-
+    for (int d = current->tryDepth; d > current->currentLoop->tryDepth; d--) {
+        emitByte(OP_POP_HANDLER);
+    }
     if (current->currentLoop->breakCount == 64) {
         error("Too many 'break' statements in one loop.");
         return;
@@ -435,7 +441,9 @@ static void continueStatement(void) {
 
     // Pop/close any locals declared inside the loop body
     discardLocals(current->currentLoop->scopeDepth);
-
+    for (int d = current->tryDepth; d > current->currentLoop->tryDepth; d--) {
+        emitByte(OP_POP_HANDLER);
+    }
     // Jump back to the loop start (or increment clause in a for-loop)
     emitLoop(current->currentLoop->start);
 }
@@ -994,6 +1002,50 @@ static void block(void) {
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
+static void throwStatement(void) {
+    expression();
+    consume(TOKEN_SEMICOLON, "Expect ';' after thrown value.");
+    emitByte(OP_THROW);
+}
+
+static void tryStatement(void) {
+    // 1. Register the exception handler with a 2-byte jump offset to the catch block
+    int handlerJump = emitJump(OP_PUSH_HANDLER);
+
+    current->tryDepth++;
+    // 2. Compile the 'try' block
+    consume(TOKEN_LEFT_BRACE, "Expect '{' after 'try'.");
+    beginScope();
+    block();
+    endScope();
+    current->tryDepth--;
+    // 3. If 'try' finishes normally, pop the handler and jump over the 'catch' block
+    emitByte(OP_POP_HANDLER);
+    int exitJump = emitJump(OP_JUMP);
+
+    // 4. Patch OP_PUSH_HANDLER to land right at the start of 'catch'
+    patchJump(handlerJump);
+
+    consume(TOKEN_CATCH, "Expect 'catch' after 'try' block.");
+    beginScope();
+
+    // Optional '(err)' variable binding in catch: supports both 'catch (e) {}' and 'catch {}'
+    if (match(TOKEN_LEFT_PAREN)) {
+        uint8_t errVar = parseVariable("Expect exception variable name.");
+        defineVariable(errVar); // The VM pushes the thrown value onto this exact stack slot!
+        consume(TOKEN_RIGHT_PAREN, "Expect ')' after catch variable.");
+    } else {
+        // If no catch variable was specified, pop the thrown value the VM pushed
+        emitByte(OP_POP);
+    }
+
+    consume(TOKEN_LEFT_BRACE, "Expect '{' before 'catch' block.");
+    block();
+    endScope(); // Automatically pops the 'err' local variable!
+
+    patchJump(exitJump);
+}
+
 static void function(FunctionType type) {
     Compiler compiler;
     initCompiler(&compiler, type);
@@ -1266,6 +1318,8 @@ static void synchronize(void) {
         case TOKEN_RETURN:
         case TOKEN_BREAK:
         case TOKEN_CONTINUE:
+        case TOKEN_TRY:
+        case TOKEN_THROW:
             return;
 
         default:; // Do nothing.
@@ -1288,6 +1342,10 @@ static void statement() {
         ifStatement();
     } else if (match(TOKEN_WHILE)) {
         whileStatement();
+    } else if (match(TOKEN_TRY)) {
+        tryStatement();
+    } else if (match(TOKEN_THROW)) {
+        throwStatement();
     } else if (match(TOKEN_LEFT_BRACE)) {
         beginScope();
         block();

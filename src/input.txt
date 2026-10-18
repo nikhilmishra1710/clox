@@ -105,3 +105,70 @@ print 5 ^ 3;       // Expect: 6
 print 1 << 3;      // Expect: 8
 print 8 >> 2;      // Expect: 2
 print ~0;          // Expect: -1
+
+fun inner(x) {
+    if (x < 0) {
+        throw "Negative number: ${x}";
+    }
+    return x * 2;
+}
+
+fun outer(x) {
+    var local = "cleaned up";
+    return inner(x) + 1;
+}
+
+// 1. Basic try/catch
+try {
+    print "1. Inside try";
+    throw "boom!";
+    print "FAIL: unreachable";
+} catch (e) {
+    print "1. Caught: " + e; // Expect: 1. Caught: boom!
+}
+
+// 2. Stack unwinding across multiple call frames
+fun level2() {
+    throw "deep error";
+}
+fun level1() {
+    var local = "cleaned up";
+    return level2();
+}
+try {
+    level1();
+} catch (err) {
+    print "2. Unwound: " + err; // Expect: 2. Unwound: deep error
+}
+
+// 3. 'continue' and 'break' inside a try block inside a loop
+// (Tests that OP_POP_HANDLER is emitted properly so handler stack doesn't leak!)
+try {
+    for (var i = 0; i < 5; i++) {
+        try {
+            if (i == 1) continue;
+            if (i == 3) break;
+            print "3. Loop i = ${i}";
+        } catch (innerErr) {
+            print "FAIL: inner catch should not run";
+        }
+    }
+    // Now throw outside the loop: should be caught by OUTER try, NOT the broken inner try!
+    throw "outer catch works!";
+} catch (outerErr) {
+    print "3. " + outerErr;
+}
+// Expect:
+// 3. Loop i = 0
+// 3. Loop i = 2
+// 3. outer catch works!
+
+// 4. 'return' inside a try block
+fun earlyReturn() {
+    try {
+        return "4. Returned cleanly from try";
+    } catch (e) {
+        return "FAIL";
+    }
+}
+print earlyReturn(); // Expect: 4. Returned cleanly from try

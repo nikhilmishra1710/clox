@@ -59,7 +59,10 @@ typedef enum {
     OP_SLICE,
     OP_TO_STRING,
     OP_DUP,
-    OP_DUP2
+    OP_DUP2,
+    OP_PUSH_HANDLER,
+    OP_POP_HANDLER,
+    OP_THROW
 } OpCode;
 
 typedef struct {
