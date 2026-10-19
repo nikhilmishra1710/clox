@@ -56,6 +56,7 @@ ObjFunction* newFunction() {
     function->arity = 0;
     function->upvalueCount = 0;
     function->name = NULL;
+    function->module = vm.currentModule;
     initChunk(&function->chunk);
     return function;
 }
@@ -136,7 +137,18 @@ ObjMap* newMap(void) {
     return map;
 }
 
+ObjModule* newModule(ObjString* name) {
+    ObjModule* module = ALLOCATE_OBJ(ObjModule, OBJ_MODULE);
+    module->name = name;
+    initTable(&module->exports);
+    return module;
+}
+
 static void printFunction(ObjFunction* function) {
+    if (function->module != NULL && function->name == NULL) {
+        printf("<module %s>", function->module->name->chars);
+        return;
+    }
     if (function->name == NULL) {
         printf("<script>");
         return;
@@ -213,6 +225,10 @@ void printObject(Value value) {
             first = false;
         }
         printf("}");
+        break;
+    }
+    case OBJ_MODULE: {
+        printf("<module %s>", AS_MODULE(value)->name->chars);
     }
     }
 }

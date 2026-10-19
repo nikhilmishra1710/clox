@@ -35,6 +35,8 @@ typedef struct {
     Value* stackTop;
     Table globals;
     Table strings;
+    Table modules;
+    ObjModule* currentModule;
     Value switchValue;
     ObjUpvalue* openUpvalues;
     size_t bytesAllocated;

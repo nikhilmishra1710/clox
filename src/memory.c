@@ -97,6 +97,7 @@ static void blackenObject(Obj* object) {
     case OBJ_FUNCTION: {
         ObjFunction* function = (ObjFunction*) object;
         markObject((Obj*) function->name);
+        markObject((Obj*) function->module);
         markArray(&function->chunk.constants);
         break;
     }
@@ -118,6 +119,12 @@ static void blackenObject(Obj* object) {
     case OBJ_MAP: {
         ObjMap* map = (ObjMap*) object;
         markTable(&map->items);
+        break;
+    }
+    case OBJ_MODULE: {
+        ObjModule* module = (ObjModule*) object;
+        markObject((Obj*) module->name);
+        markTable(&module->exports);
         break;
     }
     case OBJ_NATIVE:
@@ -196,6 +203,12 @@ static void freeObject(Obj* object) {
         FREE(ObjMap, object);
         break;
     }
+    case OBJ_MODULE: {
+        ObjModule* module = (ObjModule*) object;
+        freeTable(&module->exports);
+        FREE(ObjModule, object);
+        break;
+    }
     }
 }
 
@@ -213,6 +226,8 @@ static void markRoots(void) {
     }
 
     markTable(&vm.globals);
+    markTable(&vm.modules);
+    markObject((Obj*) vm.currentModule);
     markCompilerRoots();
     markObject((Obj*) vm.initString);
 }

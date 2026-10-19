@@ -25,25 +25,25 @@
    - [ ] Add test cases in `test/for/`, `test/while/`, and `test/switch/` folders
 
 5. **Compound Assignment & Increment/Decrement** (`+=`, `-=`, `*=`, `/=`, `++`, `--` as compiler sugar)
-   - [ ] Implementation
-   - [ ] Basic sanity
+   - [X] Implementation
+   - [X] Basic sanity
    - [ ] Add test cases in `test/assignment/` and `test/operator/` folders
 
 6. **Modulo & Bitwise Operators** (`%`, `&`, `|`, `^`, `<<`, `>>`, `~` — one opcode and parse-rule row each)
-   - [ ] Implementation
-   - [ ] Basic sanity
+   - [X] Implementation
+   - [X] Basic sanity
    - [ ] Add test cases in `test/operator/` folder
 
 ### Medium Effort / High Expressiveness
 
 7. **Anonymous Functions / Lambdas** (`var f = fun (a, b) { return a + b; };` expression-level function compilation)
-   - [ ] Implementation
-   - [ ] Basic sanity
+   - [X] Implementation
+   - [X] Basic sanity
    - [ ] Add test cases in `test/function/` and `test/closure/` folders
 
 8. **Exceptions (`try` / `catch` / `throw`)** (Exception handler stack per `CallFrame` and stack/upvalue unwinding in `vm.c`)
-   - [ ] Implementation
-   - [ ] Basic sanity
+   - [X] Implementation
+   - [X] Basic sanity
    - [ ] Add test cases in `test/exception/` folder
 
 9. **Module System (`import "foo.lox"`)** (Per-module isolated globals, module caching, and relative path resolution)

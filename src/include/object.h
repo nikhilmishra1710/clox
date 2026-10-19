@@ -19,6 +19,7 @@
 #define IS_NATIVE_INSTANCE(value) isObjType(value, OBJ_NATIVE_INSTANCE)
 #define IS_LIST(value) isObjType(value, OBJ_LIST)
 #define IS_MAP(value) isObjType(value, OBJ_MAP)
+#define IS_MODULE(value) isObjType(value, OBJ_MODULE)
 
 #define AS_BOUND_METHOD(value) ((ObjBoundMethod*) AS_OBJ(value))
 #define AS_CLASS(value) ((ObjClass*) AS_OBJ(value))
@@ -32,6 +33,7 @@
 #define AS_NATIVE_INSTANCE(value) ((ObjNativeInstance*) AS_OBJ(value))
 #define AS_LIST(value) ((ObjList*) AS_OBJ(value))
 #define AS_MAP(value) ((ObjMap*) AS_OBJ(value))
+#define AS_MODULE(value) ((ObjModule*) AS_OBJ(value))
 
 typedef enum {
     OBJ_BOUND_METHOD,
@@ -45,7 +47,8 @@ typedef enum {
     OBJ_NATIVE_CLASS,
     OBJ_NATIVE_INSTANCE,
     OBJ_LIST,
-    OBJ_MAP
+    OBJ_MAP,
+    OBJ_MODULE
 } ObjType;
 
 struct Obj {
@@ -56,10 +59,17 @@ struct Obj {
 
 typedef struct {
     Obj obj;
+    ObjString* name;
+    Table exports;
+} ObjModule;
+
+typedef struct {
+    Obj obj;
     int arity;
     int upvalueCount;
     Chunk chunk;
     ObjString* name;
+    ObjModule* module;
 } ObjFunction;
 
 typedef bool (*NativeFn)(int argCount, Value* args, Value* result);
@@ -158,6 +168,7 @@ ObjList* newList(void);
 ObjMap* newMap(void);
 void printObject(Value value);
 ObjString* valueToString(Value value);
+ObjModule* newModule(ObjString* name);
 
 static inline bool isObjType(Value value, ObjType type) {
     return IS_OBJ(value) && AS_OBJ(value)->type == type;

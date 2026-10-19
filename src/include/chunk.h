@@ -62,7 +62,9 @@ typedef enum {
     OP_DUP2,
     OP_PUSH_HANDLER,
     OP_POP_HANDLER,
-    OP_THROW
+    OP_THROW,
+    OP_IMPORT,
+
 } OpCode;
 
 typedef struct {

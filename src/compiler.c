@@ -252,8 +252,25 @@ static ObjFunction* endCompiler(void) {
 
 #ifdef DEBUG_PRINT_CODE
     if (!parser.hadError) {
-        disassembleChunk(currentChunk(),
-                         function->name != NULL ? function->name->chars : "<script>");
+        const char* label;
+        char buf[256];
+
+        if (function->module != NULL) {
+            if (function->name == NULL) {
+                label = function->module->name->chars;
+            } else {
+                snprintf(buf, sizeof buf, "<%s>:%s", function->module->name->chars,
+                         function->name->chars);
+                label = buf;
+            }
+        } else if (function->name != NULL) {
+            snprintf(buf, sizeof buf, "<script>:%s", function->name->chars);
+            label = buf;
+        } else {
+            label = "<script>";
+        }
+
+        disassembleChunk(currentChunk(), label);
     }
 #endif
     current = current->enclosing;
@@ -908,6 +925,15 @@ static void lambda(bool canAssign) {
     function(TYPE_FUNCTION);
 }
 
+static void import_(bool canAssign) {
+    (void) canAssign;
+    consume(TOKEN_STRING, "Expect module file path string after 'import'.");
+    // Strip the surrounding quotes: start + 1, length - 2
+    uint8_t pathConstant =
+        makeConstant(OBJ_VAL(copyString(parser.previous.start + 1, parser.previous.length - 2)));
+    emitBytes(OP_IMPORT, pathConstant);
+}
+
 ParseRule rules[] = {
     [TOKEN_LEFT_PAREN] = {grouping, call, PREC_CALL},
     [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
@@ -965,6 +991,7 @@ ParseRule rules[] = {
     [TOKEN_VAR] = {NULL, NULL, PREC_NONE},
     [TOKEN_WHILE] = {NULL, NULL, PREC_NONE},
     [TOKEN_ERROR] = {NULL, NULL, PREC_NONE},
+    [TOKEN_IMPORT] = {import_, NULL, PREC_NONE},
     [TOKEN_EOF] = {NULL, NULL, PREC_NONE},
 };
 
@@ -1330,6 +1357,7 @@ static void synchronize(void) {
         case TOKEN_CONTINUE:
         case TOKEN_TRY:
         case TOKEN_THROW:
+        case TOKEN_IMPORT:
             return;
 
         default:; // Do nothing.
@@ -1337,6 +1365,13 @@ static void synchronize(void) {
 
         advance();
     }
+}
+
+static void importStatement(void) {
+    consume(TOKEN_STRING, "Expect module file path string after 'import'.");
+    uint8_t pathConstant = identifierConstant(&parser.previous);
+    consume(TOKEN_SEMICOLON, "Expect ';' after import.");
+    emitBytes(OP_IMPORT, pathConstant);
 }
 
 static void statement() {
@@ -1364,6 +1399,8 @@ static void statement() {
         breakStatement();
     } else if (match(TOKEN_CONTINUE)) {
         continueStatement();
+    } else if (match(TOKEN_IMPORT)) {
+        importStatement();
     } else {
         expressionStmt();
     }

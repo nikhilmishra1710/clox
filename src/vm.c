@@ -50,6 +50,8 @@ static char* getType(Value value) {
             return "list";
         case OBJ_MAP:
             return "map";
+        case OBJ_MODULE:
+            return "module";
         }
     }
     return "unknown";
@@ -105,6 +107,8 @@ void initVM(void) {
     vm.grayStack = NULL;
     initTable(&vm.globals);
     initTable(&vm.strings);
+    initTable(&vm.modules);
+    vm.currentModule = NULL;
     vm.initString = NULL;
     vm.initString = copyString("init", 4);
 
@@ -116,6 +120,7 @@ void initVM(void) {
 void freeVM(void) {
     freeTable(&vm.globals);
     freeTable(&vm.strings);
+    freeTable(&vm.modules);
     vm.initString = NULL;
     freeObjects();
 }
@@ -221,6 +226,17 @@ static bool invokeFromClass(ObjClass* klass, ObjString* name, int argCount) {
 
 static bool invoke(ObjString* name, int argCount) {
     Value receiver = peek(argCount);
+
+    if (IS_MODULE(receiver)) {
+        ObjModule* module = AS_MODULE(receiver);
+        Value value;
+        if (!tableGet(&module->exports, name, &value)) {
+            runtimeError("Undefined export '%s' in module '%s'.", name->chars, module->name->chars);
+            return false;
+        }
+        vm.stackTop[-argCount - 1] = value;
+        return callValue(value, argCount);
+    }
 
     if (IS_NATIVE_INSTANCE(receiver)) {
         ObjNativeInstance* ni = AS_NATIVE_INSTANCE(receiver);
@@ -375,6 +391,24 @@ static void concatenate(void) {
     push(OBJ_VAL(result));
 }
 
+static char* readModuleFile(const char* filePath) {
+    FILE* file = fopen(filePath, "rb");
+    if (file == NULL) {
+        return NULL;
+    }
+    fseek(file, 0L, SEEK_END);
+    long fileSizeLong = ftell(file);
+    rewind(file);
+    size_t fileSize = (size_t) fileSizeLong;
+    char* buffer = (char*) malloc(fileSize + 1);
+    if (buffer == NULL)
+        return NULL;
+    size_t bytesRead = fread(buffer, sizeof(char), fileSize, file);
+    buffer[bytesRead] = '\0';
+    fclose(file);
+    return buffer;
+}
+
 static InterpretResult run(void) {
     CallFrame* frame = &vm.frames[vm.frameCount - 1];
 
@@ -382,6 +416,9 @@ static InterpretResult run(void) {
 #define READ_SHORT() (frame->ip += 2, (uint16_t) ((frame->ip[-2] << 8) | frame->ip[-1]))
 #define READ_CONSTANT() (frame->closure->function->chunk.constants.values[READ_BYTE()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
+#define CURRENT_GLOBALS()                                                                          \
+    (frame->closure->function->module != NULL ? &frame->closure->function->module->exports         \
+                                              : &vm.globals)
 #define BINARY_OP(valueType, op)                                                                   \
     do {                                                                                           \
         if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {                                          \
@@ -442,7 +479,8 @@ static InterpretResult run(void) {
         case OP_GET_GLOBAL: {
             ObjString* name = READ_STRING();
             Value value;
-            if (!tableGet(&vm.globals, name, &value)) {
+            if (!tableGet(CURRENT_GLOBALS(), name, &value) &&
+                !tableGet(&vm.globals, name, &value)) { // Fallback to built-in natives like clock()
                 runtimeError("Undefined variable '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
@@ -451,14 +489,15 @@ static InterpretResult run(void) {
         }
         case OP_DEFINE_GLOBAL: {
             ObjString* name = READ_STRING();
-            tableSet(&vm.globals, name, peek(0));
+            tableSet(CURRENT_GLOBALS(), name, peek(0));
             pop();
             break;
         }
         case OP_SET_GLOBAL: {
             ObjString* name = READ_STRING();
-            if (tableSet(&vm.globals, name, peek(0))) {
-                tableDelete(&vm.globals, name);
+            Table* targetTable = CURRENT_GLOBALS();
+            if (tableSet(targetTable, name, peek(0))) {
+                tableDelete(targetTable, name);
                 runtimeError("Undefined variable '%s'.", name->chars);
                 return INTERPRET_RUNTIME_ERROR;
             }
@@ -475,6 +514,18 @@ static InterpretResult run(void) {
             break;
         }
         case OP_GET_PROPERTY: {
+            if (IS_MODULE(peek(0))) {
+                ObjModule* module = AS_MODULE(peek(0));
+                ObjString* name = READ_STRING();
+                Value value;
+                if (tableGet(&module->exports, name, &value)) {
+                    pop();
+                    push(value);
+                    break;
+                }
+                runtimeError("Undefined export '%s' in module.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
             if (!IS_INSTANCE(peek(0))) {
                 runtimeError("Only instances have properties.");
                 return INTERPRET_RUNTIME_ERROR;
@@ -718,8 +769,14 @@ static InterpretResult run(void) {
         case OP_RETURN: {
             Value result = pop();
             closeUpvalues(frame->slots);
+
+            if (frame->closure->function->name == NULL &&
+                frame->closure->function->module != NULL) {
+                result = frame->slots[-1]; // Pulls the module we pushed in OP_IMPORT
+                printf("%d\n", IS_MODULE(result));
+            }
+
             vm.frameCount--;
-            // Discard any exception handlers registered inside the returning frame
             while (vm.handlerCount > 0 &&
                    vm.handlers[vm.handlerCount - 1].frameCount > vm.frameCount) {
                 vm.handlerCount--;
@@ -729,7 +786,7 @@ static InterpretResult run(void) {
                 return INTERPRET_OK;
             }
 
-            vm.stackTop = frame->slots;
+            vm.stackTop = frame->slots - 1; // Pops both frame slots and the temporary module slot!
             push(result);
             frame = &vm.frames[vm.frameCount - 1];
             break;
@@ -998,9 +1055,48 @@ static InterpretResult run(void) {
             push(thrown);
             break;
         }
+        case OP_IMPORT: {
+            ObjString* path = READ_STRING();
+            Value moduleVal;
+            if (tableGet(&vm.modules, path, &moduleVal)) {
+                push(moduleVal);
+                break;
+            }
+            char* source = readModuleFile(path->chars);
+            if (source == NULL) {
+                runtimeError("Could not open module file '%s'.", path->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            ObjModule* prevModule = vm.currentModule;
+            ObjModule* module = newModule(path);
+            vm.currentModule = module;
+
+            tableSet(&vm.modules, path, OBJ_VAL(module));
+
+            ObjFunction* function = compile(source);
+            free(source);
+            vm.currentModule = prevModule;
+
+            if (function == NULL) {
+                return INTERPRET_COMPILE_ERROR;
+            }
+
+            push(OBJ_VAL(module));
+            push(OBJ_VAL(function));
+            ObjClosure* closure = newClosure(function);
+            pop();
+            push(OBJ_VAL(closure));
+            if (!call(closure, 0)) {
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            frame = &vm.frames[vm.frameCount - 1];
+            break;
+        }
         }
     }
 
+#undef CURRENT_GLOBALS
 #undef BINARY_OP
 #undef READ_STRING
 #undef READ_CONSTANT

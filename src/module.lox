@@ -1,0 +1,4 @@
+var m = import "src/math.lox";
+print m;            // Expect: <module math.lox>
+print m.PI;         // Expect: 3.14159
+print m.square(5);  // Expect: 25

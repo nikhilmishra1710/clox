@@ -1,0 +1,4 @@
+fun square(x) {
+    return x * x;
+}
+var PI = 3.14159;
