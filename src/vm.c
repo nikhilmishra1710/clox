@@ -770,10 +770,10 @@ static InterpretResult run(void) {
             Value result = pop();
             closeUpvalues(frame->slots);
 
-            if (frame->closure->function->name == NULL &&
-                frame->closure->function->module != NULL) {
-                result = frame->slots[-1]; // Pulls the module we pushed in OP_IMPORT
-                printf("%d\n", IS_MODULE(result));
+            bool isModuleFrame =
+                frame->closure->function->name == NULL && frame->closure->function->module != NULL;
+            if (isModuleFrame) {
+                result = frame->slots[-1]; // module pushed by OP_IMPORT
             }
 
             vm.frameCount--;
@@ -786,7 +786,7 @@ static InterpretResult run(void) {
                 return INTERPRET_OK;
             }
 
-            vm.stackTop = frame->slots - 1; // Pops both frame slots and the temporary module slot!
+            vm.stackTop = isModuleFrame ? frame->slots - 1 : frame->slots;
             push(result);
             frame = &vm.frames[vm.frameCount - 1];
             break;

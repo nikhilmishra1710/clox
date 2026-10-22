@@ -922,6 +922,10 @@ static void interpolation(bool canAssign) {
 
 static void lambda(bool canAssign) {
     (void) canAssign;
+    if (check(TOKEN_IDENTIFIER)) {
+        error("Expect expression.");
+        return;
+    }
     function(TYPE_FUNCTION);
 }
 

@@ -1,326 +1,211 @@
 #!/usr/bin/env bash
+# Usage: run_tests.sh <binary> [suite-glob]
+#   env: JOBS=<n> (default nproc)   TEST_TIMEOUT=<sec> (default 30)   VERBOSE=1 (show passing logs)
+# Optional spec key:  serial: true   -> test is serialized against other serial tests (shared-state hooks)
 set -euo pipefail
 
-BIN=$1
+BIN=${1:?usage: $0 <binary> [suite-glob]}
+SUITE_GLOB=${2:-test/*}
+JOBS=${JOBS:-$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)}
+TEST_TIMEOUT=${TEST_TIMEOUT:-30}
+VERBOSE=${VERBOSE:-0}
 
-if [ -t 1 ] && command -v tput >/dev/null; then
-    RED=$(tput setaf 1)
-    GREEN=$(tput setaf 2)
-    YELLOW=$(tput setaf 3)
-    BLUE=$(tput setaf 4)
-    BOLD=$(tput bold)
-    RESET=$(tput sgr0)
+if [ -t 1 ] || [ -n "${GITHUB_ACTIONS:-}" ] || [ -n "${FORCE_COLOR:-}" ]; then
+    RED=$'\e[31m'; GREEN=$'\e[32m'; YELLOW=$'\e[33m'; BLUE=$'\e[34m'; BOLD=$'\e[1m'; RESET=$'\e[0m'
 else
-    RED=""
-    GREEN=""
-    YELLOW=""
-    BLUE=""
-    BOLD=""
-    RESET=""
+    RED=""; GREEN=""; YELLOW=""; BLUE=""; BOLD=""; RESET=""
 fi
 
-
-pass=0
-fail=0
-skip=0
-declare -a results=()
-
-run_hooks() {
-    local type=$1
-    local path=$2
-    local hooks
-
-    if [ "$type" = "file" ]; then
-        hooks=$(yq -r "$path.file | if type == \"string\" then . else .[] end" "$test_spec_file")
-        while IFS= read -r hook; do
-            [ -z "$hook" ] && continue
-            echo "Running hook file: $hook"
-            if ! bash "$hook"; then
-                echo "[${RED}ERROR${RESET}] Hook failed: $hook"
-                return 1
-            fi
-        done <<< "$hooks"
-
-    elif [ "$type" = "inline" ]; then
-        hooks=$(yq -r "$path.inline | if type == \"string\" then . else .[] end" "$test_spec_file")
-        [ -z "$hooks" ] && return 0
-
-        local temp="${TMP_DIR}/temp.hook"
-        echo "$hooks" > "$temp"
-        echo "Running inline hook(s):"
-        if ! bash "$temp"; then
-            echo "[${RED}ERROR${RESET}] Inline hook(s) failed"
-            return 1
-        fi
-
-    else
-        echo "[${YELLOW}WARN${RESET}] Unknown hooks type: $type"
-        return 1
-    fi
-
-    return 0
-}
-
-
-compare_files() {
-    local expected_file=$1
-    local actual_file=$2
-    local expected_eof=false
-    local actual_eof=false
-    exec 3<"$expected_file"
-    exec 4<"$actual_file"
-
-    while true;
-    do
-        IFS= read -r -u 3 expected_line || expected_eof=true
-        IFS= read -r -u 4 actual_line || actual_eof=true
-        if [ "${expected_eof:-false}" = true ] && [ "${actual_eof:-false}" = true ]; then
-            break
-        fi
-        if [ "${expected_eof:-false}" = true ] && [ "${actual_eof:-false}" != true ]; then
-            echo "EXPECTED: ${GREEN}<EOF>${RESET}"
-            echo "OUTPUT: ${RED}$actual_line${RESET}"
-            return 1
-        elif [ "${expected_eof:-false}" != true ] && [ "${actual_eof:-false}" = true ]; then
-            echo "EXPECTED: ${GREEN}$expected_line${RESET}"
-            echo "OUTPUT: ${RED}<EOF>${RESET}"
-            return 1
-        elif [ "$expected_line" != "$actual_line" ]; then
-            echo "EXPECTED: ${GREEN}$expected_line${RESET}"
-            echo "OUTPUT: ${RED}$actual_line${RESET}"
-            return 1
-        else
-            echo "OUTPUT: ${GREEN}$actual_line${RESET}"
-        fi
-
-    done
-
-    return 0
-}
-
-normalize_line_endings() {
-    local files=$@
-    for file in $files; do
-        if [ -f "$file" ]; then
-            sed -i 's/\r$//' "$file"
-        fi
-    done
-}
+# One yq call per spec: emits shell assignments (safely quoted via @sh).
+YQ_FILTER='
+def txt(x): if x == null then "" elif (x|type)=="string" then x else (x|map(tostring)|join("\n")) end;
+def hook(h): if h.type=="file" then txt(h.file) elif h.type=="inline" then txt(h.inline) else "" end;
+@sh "
+id=\(.id // "")
+skip=\(.skip // false)
+serial=\(.serial // false)
+in_type=\(.input.type // "")
+in_file=\(.input.file // "")
+in_inline=\(txt(.input.inline))
+args=\(.args // [] | if type=="string" then . else join(" ") end)
+pre_type=\(.hooks.pre.type // "none")
+pre_body=\(hook(.hooks.pre))
+post_type=\(.hooks.post.type // "none")
+post_body=\(hook(.hooks.post))
+out_kind=\(.expected_stdout.type // "")
+out_file=\(.expected_stdout.file // "")
+out_inline=\(txt(.expected_stdout.inline))
+out_null=\(.expected_stdout.inline == null)
+err_kind=\(.expected_stderr.type // "")
+err_file=\(.expected_stderr.file // "")
+err_inline=\(txt(.expected_stderr.inline))
+err_null=\(.expected_stderr.inline == null)
+ec=\(.expected_ec)
+"'
 
 now_ms() {
-    if date +%s%3N >/dev/null 2>&1; then
-        date +%s%3N
-    else
-        date +%s%N | awk '{print int($1/1000000)}'
-    fi
+    if [ -n "${EPOCHREALTIME:-}" ]; then local t=${EPOCHREALTIME/[.,]/}; echo $((t / 1000))
+    else date +%s%3N; fi
 }
 
-for test_folder in test/*;
-do
-    echo -e "In test folder: $test_folder"
-    SPEC_DIR="$test_folder/specs"
-    INPUT_DIR="$test_folder/input"
-    EXPECTED_DIR="$test_folder/expected"
-    OUTPUT_DIR="$test_folder/outputs"
-    TMP_DIR="$test_folder/tmp"
+fmt_dur() { if [ "$1" -ge 1000 ]; then printf '%d.%03ds' $(($1 / 1000)) $(($1 % 1000)); else printf '%dms' "$1"; fi; }
 
-    echo "Setting up output directory..."
-    mkdir -p $OUTPUT_DIR
-    mkdir -p $TMP_DIR
+spec_key() { local d; d=$(dirname "$(dirname "$1")"); echo "$(basename "$d")__$(basename "$1" .yaml)"; }
 
-    for test_spec_file in "$SPEC_DIR"/*.yaml;
-    do
-        filename=$(basename -- "$test_spec_file" .yaml)
-        test_id=$( yq -r '.id' "$test_spec_file" )
-        echo "${BOLD}${YELLOW}Test ID: $test_id $test_spec_file${RESET}"
+# ---------------------------------------------------------------- worker
+run_hook() { # type body
+    case $1 in
+    file)
+        local h
+        while IFS= read -r h; do
+            [ -z "$h" ] && continue
+            echo "Running hook file: $h"
+            bash "$h" || { echo "[${RED}ERROR${RESET}] Hook failed: $h"; return 1; }
+        done <<<"$2" ;;
+    inline)
+        [ -z "$2" ] && return 0
+        printf '%s\n' "$2" >"$tmp/hook.sh"
+        echo "Running inline hook(s):"
+        bash "$tmp/hook.sh" || { echo "[${RED}ERROR${RESET}] Inline hook(s) failed"; return 1; } ;;
+    *) echo "[${YELLOW}WARN${RESET}] Unknown hooks type: $1"; return 1 ;;
+    esac
+}
 
-        skip_test=$( yq -r '.skip // false' "$test_spec_file" )
-        if [ "$skip_test" == "true" ]; then
-            echo "[${BLUE}SKIP${RESET}] Skipping test $filename"
-            skip=$((skip + 1))
-            results+=("$test_id|N/A|SKIP")
-            continue
+resolve_expected() { # kind file inline isnull dest
+    case $1 in
+    file) echo "$exp_dir/$2" ;;
+    inline)
+        if [ "$4" = true ]; then : >"$5"; else printf '%s\n' "$3" >"$5"; fi
+        echo "$5" ;;
+    *) return 1 ;;
+    esac
+}
+
+compare() { # label expected actual
+    [ -f "$2" ] || { echo "[${YELLOW}WARN${RESET}] No expected $1 file"; return 1; }
+    if cmp -s <(sed 's/\r$//' "$2") <(sed 's/\r$//' "$3"); then return 0; fi
+    echo "$1 mismatch (${GREEN}-expected${RESET} / ${RED}+actual${RESET}):"
+    diff -u --label expected --label actual <(sed 's/\r$//' "$2") <(sed 's/\r$//' "$3") | head -40 || true
+    return 1
+}
+
+finish() { printf '%s|%s|%s\n' "$id" "${dur:-N/A}" "$1" >"$res"; exit 0; }
+
+worker() {
+    set +e; set -u
+    local spec=$1
+    name=$(basename "$spec" .yaml)
+    suite_dir=$(dirname "$(dirname "$spec")")
+    key=$(spec_key "$spec")
+    res="$RES_DIR/$key.res"
+    exec >"$RES_DIR/$key.log" 2>&1
+
+    in_dir="$suite_dir/input"; exp_dir="$suite_dir/expected"; out_dir="$suite_dir/outputs"
+    tmp="$suite_dir/tmp/$name"
+    mkdir -p "$out_dir" "$tmp"
+    trap 'rm -rf "$tmp"' EXIT
+    id=$name; dur=""
+
+    vars=$(yq -r "$YQ_FILTER" "$spec") || { echo "[${RED}ERROR${RESET}] Bad spec $spec"; finish FAIL; }
+    eval "$vars"
+    echo "${BOLD}${YELLOW}Test ID: $id $spec${RESET}"
+
+    if [ "$skip" = true ]; then echo "[${BLUE}SKIP${RESET}] $name"; dur=N/A; finish SKIP; fi
+    if [ "$serial" = true ] && command -v flock >/dev/null; then exec 9>"$RES_DIR/serial.lock"; flock 9; fi
+
+    case $in_type in
+    file)
+        infile="$in_dir/$in_file"
+        [ -f "$infile" ] || { echo "[${RED}ERROR${RESET}] Input file $infile missing"; finish FAIL; }
+        cp "$infile" "$out_dir/$name.in" ;;
+    inline)
+        while [[ $in_inline == *$'\n' ]]; do in_inline=${in_inline%$'\n'}; done
+        printf '%s\n' "$in_inline" >"$out_dir/$name.in"
+        infile="$out_dir/$name.in" ;;
+    *) echo "[${RED}ERROR${RESET}] Unknown input type"; finish FAIL ;;
+    esac
+
+    if [ "$pre_type" != none ]; then
+        run_hook "$pre_type" "$pre_body" || { echo "[${RED}ERROR${RESET}] Pre hooks failed"; finish FAIL; }
+    fi
+
+    out="$out_dir/$name.out"; err="$out_dir/$name.err"
+    read -ra argv <<<"$args"
+    start=$(now_ms)
+    timeout "$TEST_TIMEOUT" "$BIN" ${argv[@]+"${argv[@]}"} "$infile" >"$out" 2>"$err"
+    status=$?
+    dur=$(fmt_dur $(($(now_ms) - start)))
+    [ "$status" -eq 124 ] && echo "[${RED}TIMEOUT${RESET}] exceeded ${TEST_TIMEOUT}s"
+
+    if [ "$post_type" != none ]; then
+        run_hook "$post_type" "$post_body" || { echo "[${RED}ERROR${RESET}] Post hooks failed"; finish FAIL; }
+    fi
+
+    ok=1
+    exp_out=$(resolve_expected "$out_kind" "$out_file" "$out_inline" "$out_null" "$tmp/exp.out") \
+        || { echo "[${YELLOW}WARN${RESET}] Unknown expected_stdout type"; ok=0; }
+    exp_err=$(resolve_expected "$err_kind" "$err_file" "$err_inline" "$err_null" "$tmp/exp.err") \
+        || { echo "[${YELLOW}WARN${RESET}] Unknown expected_stderr type"; ok=0; }
+
+    [ $ok -eq 1 ] && { compare stdout "$exp_out" "$out" || ok=0; }
+    [ $ok -eq 1 ] && { compare stderr "$exp_err" "$err" || ok=0; }
+    if [ $ok -eq 1 ]; then
+        if [ "$ec" = null ]; then echo "[${YELLOW}WARN${RESET}] No expected exit code"; ok=0
+        elif [ "$status" -ne "$ec" ]; then
+            echo "Exit code mismatch: expected ${GREEN}$ec${RESET}, got ${RED}$status${RESET}"; ok=0
         fi
+    fi
 
-        output_out="$OUTPUT_DIR/${filename}.out"
-        output_err="$OUTPUT_DIR/${filename}.err"
+    if [ $ok -eq 1 ]; then echo "[${GREEN}PASS${RESET}] Test $id ($dur)"; finish PASS
+    else echo "[${RED}FAIL${RESET}] Test $id: FAIL"; finish FAIL; fi
+}
 
-        infile_type=$( yq -r '.input.type' "$test_spec_file" )
+if [ "${WORKER:-0}" = 1 ]; then worker "$2"; exit 0; fi
 
-        if [ "$infile_type" == "file" ]; then
-            infile_name=$( yq -r '.input.file' "$test_spec_file" )
-            infile="$INPUT_DIR/$infile_name"
-            if [ ! -f "$infile" ]; then
-                echo "[${RED}ERROR${RESET}] Input file $infile does not exist for test $test_id"
-                fail=$((fail + 1))
-                continue
-            fi
-            cp "$infile" "$OUTPUT_DIR/${filename}.in"
-        elif [ "$infile_type" == "inline" ]; then
-            infile_content=$( yq -r '.input.inline' "$test_spec_file" )
-            echo "$infile_content" > "$OUTPUT_DIR/${filename}.in"
-            infile="$OUTPUT_DIR/${filename}.in"
-        else
-            echo "[${RED}ERROR${RESET}] Unknown infile type for test $test_id"
-            fail=$((fail + 1))
-            continue
-        fi
+# ---------------------------------------------------------------- main
+shopt -s nullglob
+specs=()
+for d in $SUITE_GLOB; do
+    [ -d "$d/specs" ] && specs+=("$d"/specs/*.yaml)
+done
+[ ${#specs[@]} -eq 0 ] && { echo "No specs found under $SUITE_GLOB"; exit 1; }
 
-        pre_hooks_type=$( yq -r '.hooks.pre.type // "none"' "$test_spec_file" )
-        if [ "$pre_hooks_type" != "none" ]; then
-            echo "Running pre-test hooks..."
-            if ! run_hooks "$pre_hooks_type" '.hooks.pre'; then
-                echo "[${RED}ERROR${RESET}] Pre test hooks failed for test $test_id"
-                continue
-            fi
-        fi
+RES_DIR=$(mktemp -d)
+trap 'rm -rf "$RES_DIR"; rm -rf test/*/tmp' EXIT
+export BIN RES_DIR YQ_FILTER TEST_TIMEOUT RED GREEN YELLOW BLUE BOLD RESET
 
-        args=$(yq -r '.args // [] | if type=="string" then . else join(" ") end' "$test_spec_file")
-        set +e
-        status=0
-        start_time=$(now_ms)
-        echo "Running: $BIN $args < $infile"
-        "$BIN" $args "$infile" > "$output_out" 2> "$output_err"
-        status=$?
-        end_time=$(now_ms)
-        duration=$((end_time - start_time))
-        if [ $duration -ge 1000 ]; then
-            dur_fmt="$((duration/1000)).$((duration%1000))s"
-        else
-            dur_fmt="${duration}ms"
-        fi
-        set -e
+echo "Running ${#specs[@]} tests with $JOBS jobs..."
+t0=$(now_ms)
+printf '%s\0' "${specs[@]}" | WORKER=1 xargs -0 -n1 -P "$JOBS" "$BASH" "$0" "$BIN"
+total_ms=$(($(now_ms) - t0))
 
-        post_hooks_type=$( yq -r '.hooks.post.type // "none"' "$test_spec_file" )
-        if [ "$post_hooks_type" != "none" ]; then
-            echo "Runing post test hooks..."
-            if ! run_hooks "$post_hooks_type" '.hooks.post'; then
-                echo "[${RED}ERROR${RESET}] Post test hooks failed for test $test_id"
-                continue
-            fi
-        fi
+pass=0; fail=0; skip=0
+declare -a rows=()
+for spec in "${specs[@]}"; do
+    key=$(spec_key "$spec")
+    if [ -f "$RES_DIR/$key.res" ]; then IFS='|' read -r id dur stat <"$RES_DIR/$key.res"
+    else id=$key; dur=N/A; stat=FAIL; echo "worker crashed" >"$RES_DIR/$key.log"; fi
+    rows+=("$id|$dur|$stat")
+    case $stat in PASS) pass=$((pass + 1));; SKIP) skip=$((skip + 1));; *) fail=$((fail + 1));; esac
 
-        ok=1
-        
-        # Compare stdout
-        echo "Comparing stdout..."
-        if [ $(yq -r '.expected_stdout.type' "$test_spec_file") == "file" ]; then
-            relative_expected_out=$( yq -r '.expected_stdout.file' "$test_spec_file" )
-            expected_out="$EXPECTED_DIR/$relative_expected_out"
-        elif [ $(yq -r '.expected_stdout.type' "$test_spec_file") == "inline" ]; then
-            expected_out="$TMP_DIR/${filename}.expected.out"
-            yq -r '
-            .expected_stdout.inline
-            | if . == null then empty
-                elif type == "string" then .
-                elif type == "array" then join("\n")
-                else .
-                end
-            ' "$test_spec_file" > $expected_out
-        else
-            echo "[${YELLOW}WARN${RESET}] Unknown expected_stdout type for $filename"
-            ok=0
-        fi
-
-        if [ $ok -eq 1 ]; then
-            if [ -f "$expected_out" ]; then
-                normalize_line_endings "$expected_out" "$output_out"
-                if ! compare_files "$expected_out" "$output_out"; then
-                    ok=0
-                fi
-            else
-                echo "[${YELLOW}WARN${RESET}] No expected stdout file for $filename"
-                ok=0
-            fi
-        fi
-
-        # Compare stderr
-        if [ $(yq -r '.expected_stderr.type' "$test_spec_file") == "file" ]; then
-            relative_expected_err=$( yq -r '.expected_stderr.file' "$test_spec_file" )
-            expected_err="$EXPECTED_DIR/$relative_expected_err"
-        elif [ $(yq -r '.expected_stderr.type' "$test_spec_file") == "inline" ]; then
-            expected_err="$TMP_DIR/${filename}.expected.err"
-            yq -r '
-            .expected_stderr.inline
-            | if . == null then empty
-                elif type == "string" then .
-                elif type == "array" then join("\n")
-                else .
-                end
-            ' "$test_spec_file" > "$expected_err"
-
-        else
-            echo "[${YELLOW}WARN${RESET}] Unknown expected_stderr type for $filename"
-            ok=0
-        fi
-
-        if [ $ok -eq 1 ]; then
-            echo "Comparing stderr..."
-            if [ -f "$expected_err" ]; then
-                normalize_line_endings "$expected_err" "$output_err"
-                if ! compare_files "$expected_err" "$output_err"; then
-                    ok=0
-                fi
-            else
-                echo "[${YELLOW}WARN${RESET}] No expected stderr file for $filename"
-                ok=0
-            fi
-        fi
-
-        # Compare exit code
-        expected_code=$( yq -r '.expected_ec' "$test_spec_file" )
-        if [ $ok -eq 1 ]; then
-            echo "Comparing exit code..."
-            if [ "$expected_code" != "null" ]; then
-                if [ "$status" -ne "$expected_code" ]; then
-                    echo "Exit code mismatch"
-                    echo "EXPECTED: ${GREEN}$expected_code${RESET}"
-                    echo "OUTPUT: ${RED}$status${RESET}"
-                    ok=0
-                else
-                    echo "Exit code: ${GREEN}$status${RESET}"
-                fi
-            else
-                echo "[${YELLOW}WARN${RESET}] No expected exit code for $filename"
-                ok=0
-            fi
-        fi
-
-        if [ $ok -eq 1 ]; then
-            echo "[${GREEN}PASS${RESET}] Test $test_id: PASS"
-            pass=$((pass + 1))
-            results+=("$test_id|${dur_fmt}|PASS")
-        else
-            echo "[${RED}FAIL${RESET}] Test $test_id: FAIL"
-            fail=$((fail + 1))
-            results+=("$test_id|${dur_fmt}|FAIL")
-        fi
-    done
-
-    rm -rf $TMP_DIR
+    if [ "$stat" = FAIL ]; then
+        [ -n "${GITHUB_ACTIONS:-}" ] && echo "::group::FAIL $id"
+        cat "$RES_DIR/$key.log"
+        [ -n "${GITHUB_ACTIONS:-}" ] && { echo "::endgroup::"; echo "::error file=$spec::Test $id failed"; }
+    elif [ "$VERBOSE" = 1 ]; then cat "$RES_DIR/$key.log"
+    elif [ "$stat" = PASS ]; then echo "[${GREEN}PASS${RESET}] $id ($dur)"; fi
 done
 
 echo
 echo "+----------------------+------------+--------+"
 echo "| ${YELLOW}Test ID${RESET}              | ${YELLOW}Duration${RESET}   | ${YELLOW}Status${RESET} |"
 echo "+----------------------+------------+--------+"
-for r in "${results[@]}"; do
-    IFS="|" read -r id dur stat <<< "$r"
-
-    padded_stat=$(printf "%-6s" "$stat")
-    if [ "$stat" = "PASS" ]; then
-        colored_stat="${GREEN}${padded_stat}${RESET}"
-    elif [ "$stat" = "SKIP" ]; then
-        colored_stat="${BLUE}${padded_stat}${RESET}"
-    else
-        colored_stat="${RED}${padded_stat}${RESET}"
-    fi
-
-    printf "| %-20s | %-10s | %s |\n" "$id" "$dur" "$colored_stat"
+for r in "${rows[@]}"; do
+    IFS='|' read -r id dur stat <<<"$r"
+    p=$(printf '%-6s' "$stat")
+    case $stat in PASS) c="${GREEN}$p${RESET}";; SKIP) c="${BLUE}$p${RESET}";; *) c="${RED}$p${RESET}";; esac
+    printf '| %-20s | %-10s | %s |\n' "$id" "$dur" "$c"
 done
 echo "+----------------------+------------+--------+"
-echo "Passed: $pass, Failed: $fail, Skipped: $skip, Total: $((pass + fail + skip))"
-
-if [ $fail -ne 0 ]; then
-    exit 1
-fi
+echo "Passed: $pass, Failed: $fail, Skipped: $skip, Total: $((pass + fail + skip)) in $(fmt_dur "$total_ms")"
+[ $fail -eq 0 ]
